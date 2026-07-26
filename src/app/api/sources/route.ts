@@ -154,8 +154,8 @@ async function processSourceInline(
 
     if (type === "PDF") {
       const base64Data = rawContent.includes(",") ? rawContent.split(",")[1] : rawContent;
-      const pdfBuffer = Buffer.from(base64Data, "base64");
-      extractionResult = await extractPdf(pdfBuffer);
+      const pdfUint8Array = new Uint8Array(Buffer.from(base64Data, "base64"));
+      extractionResult = await extractPdf(pdfUint8Array);
     } else if (type === "WEBSITE") {
       extractionResult = await extractWebsite(rawContent);
     } else if (type === "YOUTUBE") {

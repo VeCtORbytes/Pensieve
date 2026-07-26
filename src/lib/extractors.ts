@@ -18,7 +18,7 @@ export interface ExtractionResult {
 /**
  * Extracts text page-by-page from a PDF buffer with exact page locators.
  */
-export async function extractPdf(buffer: ArrayBuffer | Buffer): Promise<ExtractionResult> {
+export async function extractPdf(buffer: Uint8Array | ArrayBuffer): Promise<ExtractionResult> {
   const pdfOutput: any = await extractText(buffer as any);
   const text: any = pdfOutput.text;
 
