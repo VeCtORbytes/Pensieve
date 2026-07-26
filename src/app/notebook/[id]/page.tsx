@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import NotebookHeader from "@/components/NotebookHeader";
+import SourcePanel from "@/components/SourcePanel";
 
 export default async function NotebookPage({
   params,
@@ -17,20 +18,15 @@ export default async function NotebookPage({
   if (!notebook) notFound();
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-screen flex-col bg-white">
       <NotebookHeader id={notebook.id} title={notebook.title} />
 
-      <div className="grid flex-1 grid-cols-[300px_1fr] overflow-hidden">
-        <aside className="overflow-y-auto border-r border-neutral-200 p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
-            Sources
-          </p>
-          <p className="mt-6 text-sm text-neutral-400">
-            Source panel arrives in P2.
-          </p>
+      <div className="grid flex-1 grid-cols-[340px_1fr] overflow-hidden">
+        <aside className="border-r border-neutral-200 overflow-hidden">
+          <SourcePanel notebookId={notebook.id} />
         </aside>
 
-        <section className="flex items-center justify-center">
+        <section className="flex items-center justify-center bg-neutral-50/30">
           <p className="text-sm text-neutral-400">Chat arrives in P4.</p>
         </section>
       </div>
