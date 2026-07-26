@@ -30,8 +30,8 @@ export default function NotebookHeader({
   }
 
   return (
-    <header className="flex items-center gap-3 border-b border-neutral-200 px-5 py-3">
-      <Link href="/" className="text-neutral-400 hover:text-neutral-900">
+    <header className="flex items-center gap-3 border-b border-[#E2E7EA] px-5 py-3 bg-[#F5F7F8]">
+      <Link href="/" className="text-neutral-400 hover:text-[#141A22] transition">
         <ArrowLeft className="h-4 w-4" />
       </Link>
 
@@ -40,15 +40,16 @@ export default function NotebookHeader({
         onChange={(e) => setValue(e.target.value)}
         onBlur={save}
         onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-        className="flex-1 rounded px-2 py-1 text-sm font-medium outline-none hover:bg-neutral-100 focus:bg-neutral-100"
+        className="flex-1 rounded px-2 py-1 text-base font-serif-display font-normal text-[#141A22] outline-none hover:bg-white/60 focus:bg-white border border-transparent focus:border-[#E2E7EA] transition"
       />
 
-      {isPending && <span className="text-xs text-neutral-400">Saving…</span>}
+      {isPending && <span className="text-xs font-mono text-neutral-400">Saving…</span>}
 
       <button
+        type="button"
         onClick={remove}
         aria-label="Delete notebook"
-        className="text-neutral-400 hover:text-red-600"
+        className="text-neutral-400 hover:text-red-600 transition cursor-pointer p-1.5 rounded-lg hover:bg-red-50"
       >
         <Trash2 className="h-4 w-4" />
       </button>
