@@ -511,7 +511,14 @@ export default function ChatPanel({
 
       {/* Citation Detail Modal. Hidden while the full source viewer is open so
           the two overlays never stack. */}
-      {selectedCitation && !targetViewerSource && (
+      {/*
+        Citation clicks go straight to the full source viewer. This preview is
+        suppressed while the source is being fetched (otherwise it flashes for the
+        duration of the request) and once the viewer is open, so the two overlays
+        never stack. It remains as the graceful fallback when the source fails to
+        load, where its "Jump to Source Document" button retries.
+      */}
+      {selectedCitation && !targetViewerSource && !isLoadingSourceModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
           <div className="bg-white rounded-xl max-w-lg w-full p-6 shadow-2xl space-y-4 border border-neutral-200">
             <div className="flex items-start justify-between border-b border-neutral-100 pb-3">

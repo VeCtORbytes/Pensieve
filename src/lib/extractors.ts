@@ -1,134 +1,141 @@
-import { extractText } from "unpdf";
+import { extractText as extractPDFText } from "unpdf";
 import * as cheerio from "cheerio";
 import { YoutubeTranscript } from "youtube-transcript";
 import { Extraction, Locator, Segment } from "./locator";
-import { assembleVariant } from "./segments";
-import { normalizeLanguageCode } from "./language";
+import { detectLanguage, normalizeLanguageCode } from "./language";
 
 /**
- * Assembles rawText and segments with exact charStart and charEnd boundaries by
- * construction, numbering each segment. The ordinals become the anchor that
- * joins this text to its translated variants, so they must be assigned here —
- * once, over the surviving (non-empty) parts.
+ * Combines structured text parts into rawText while setting exact charStart/charEnd
+ * offsets for each segment.
  */
-function assemble(
+async function assemble(
   parts: { text: string; meta: Omit<Locator, "charStart" | "charEnd"> }[],
-  language?: string
-): Extraction {
-  const kept = parts
-    .map((part) => ({ ...part, text: part.text.trim() }))
-    .filter((part) => part.text.length > 0);
+  overrideLanguage?: string
+): Promise<Extraction> {
+  const segments: Segment[] = [];
+  let rawText = "";
 
-  const { rawText, spans } = assembleVariant(kept.map((part) => part.text));
+  for (let idx = 0; idx < parts.length; idx++) {
+    const p = parts[idx];
+    const trimmed = p.text.trim();
+    if (!trimmed) continue;
 
-  const segments: Segment[] = kept.map((part, index) => ({
-    text: part.text,
-    index,
-    locator: {
-      ...part.meta,
-      charStart: spans[index][0],
-      charEnd: spans[index][1],
-      segStart: index,
-      segEnd: index,
-    },
-  }));
+    const charStart = rawText.length;
+    rawText += trimmed + "\n\n";
+    const charEnd = rawText.length - 2;
 
-  return { rawText, segments, language };
+    segments.push({
+      text: trimmed,
+      index: idx,
+      locator: {
+        ...p.meta,
+        charStart,
+        charEnd,
+      },
+    });
+  }
+
+  const cleanRawText = rawText.trimEnd();
+
+  return {
+    rawText: cleanRawText,
+    segments,
+    language: overrideLanguage ?? (await detectLanguage(cleanRawText)),
+  };
 }
 
 /**
- * Extracts text page-by-page from a PDF buffer with page locators (no string markers).
+ * Parses PDF data and extracts text page-by-page into segments with page locators.
  */
-export async function extractPdf(buffer: Uint8Array | ArrayBuffer): Promise<Extraction> {
-  const pdfOutput: any = await extractText(buffer as any);
-  const text: any = pdfOutput.text;
-
+export async function extractPdf(data: Uint8Array): Promise<Extraction> {
+  const pdf = await extractPDFText(data);
   const parts: { text: string; meta: Omit<Locator, "charStart" | "charEnd"> }[] = [];
 
-  if (Array.isArray(text)) {
-    text.forEach((pageText: any, idx: number) => {
-      const cleanPageText = typeof pageText === "string" ? pageText.trim() : String(pageText || "").trim();
-      if (cleanPageText.length > 5) {
+  if (Array.isArray(pdf.text)) {
+    (pdf.text as string[]).forEach((pageText: string, idx: number) => {
+      const trimmed = pageText.trim();
+      if (trimmed) {
         parts.push({
-          text: cleanPageText,
+          text: trimmed,
           meta: { page: idx + 1 },
         });
       }
     });
-  } else if (typeof text === "string" && text.trim()) {
+  } else if (typeof pdf.text === "string" && (pdf.text as string).trim()) {
     parts.push({
-      text: text.trim(),
+      text: (pdf.text as string).trim(),
       meta: { page: 1 },
     });
+  }
+
+  if (parts.length === 0) {
+    throw new Error("Could not extract any readable text from this PDF document.");
   }
 
   return assemble(parts);
 }
 
 /**
- * Fetches web page content and segments text by sections/headings without markdown prefixes.
+ * Fetches HTML from a webpage, strips navigation/scripts, and extracts heading-tagged segments.
  */
 export async function extractWebsite(url: string): Promise<Extraction> {
   const res = await fetch(url, {
     headers: {
       "User-Agent":
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     },
   });
 
   if (!res.ok) {
-    throw new Error(`Failed to fetch website URL (${res.status} ${res.statusText})`);
+    throw new Error(`Failed to fetch website (HTTP status ${res.status}).`);
   }
 
   const html = await res.text();
   const $ = cheerio.load(html);
 
-  // Remove non-content elements
-  $("script, style, nav, footer, header, noscript, iframe, svg, form").remove();
+  $("script, style, nav, footer, header, iframe, noscript, svg").remove();
 
   const parts: { text: string; meta: Omit<Locator, "charStart" | "charEnd"> }[] = [];
+  let currentHeading = "Overview";
 
-  const h2Elements = $("h2");
-  if (h2Elements.length > 0) {
-    h2Elements.each((_, el) => {
-      const title = $(el as any).text().trim();
-      const nextContent = $(el as any).nextUntil("h2").text().replace(/\s+/g, " ").trim();
-      if (title || nextContent) {
-        parts.push({
-          text: `${title}\n${nextContent}`.trim(),
-          meta: { heading: title || undefined },
-        });
-      }
-    });
-  }
+  $("h1, h2, h3, h4, p, article, section").each((_, el) => {
+    const tag = el.tagName.toLowerCase();
+    const text = $(el).text().trim();
 
-  if (parts.length === 0) {
-    $("p, article, section").each((_, el) => {
-      const pText = $(el as any).text().replace(/\s+/g, " ").trim();
-      if (pText.length > 30) {
-        parts.push({ text: pText, meta: {} });
-      }
-    });
-  }
+    if (!text) return;
+
+    if (tag.startsWith("h")) {
+      currentHeading = text;
+    } else {
+      parts.push({
+        text,
+        meta: { heading: currentHeading },
+      });
+    }
+  });
 
   if (parts.length === 0) {
-    const bodyText = $("body").text().replace(/\s+/g, " ").trim();
-    if (bodyText) parts.push({ text: bodyText, meta: {} });
+    const fallbackText = $("body").text().replace(/\s+/g, " ").trim();
+    if (!fallbackText) {
+      throw new Error("No readable main body text found on this website.");
+    }
+    parts.push({
+      text: fallbackText,
+      meta: { heading: "Main Content" },
+    });
   }
 
   return assemble(parts);
 }
 
 /**
- * Fetches YouTube video captions with exact startSec and endSec locators (no [MM:SS] text prefixes).
+ * Fetches YouTube video captions, grouping cue fragments into dense continuous sentences (~350 chars)
+ * for rich semantic vector embedding.
  */
 export async function extractYoutube(url: string): Promise<Extraction> {
   let transcript: any[] = [];
 
   try {
-    // Take the video's own default caption track, so a Hindi video is ingested
-    // as Hindi. Asking for English first would hide the original language behind
-    // YouTube's auto-translation and lose the source wording entirely.
     transcript = await YoutubeTranscript.fetchTranscript(url);
   } catch (primaryErr: any) {
     try {
@@ -144,10 +151,13 @@ export async function extractYoutube(url: string): Promise<Extraction> {
     throw new Error("No captions or transcript found for this YouTube video.");
   }
 
-  // youtube-transcript reports the resolved track's language on each cue.
   const trackLanguage = normalizeLanguageCode(transcript.find((item) => item?.lang)?.lang);
 
   const parts: { text: string; meta: Omit<Locator, "charStart" | "charEnd"> }[] = [];
+
+  let currentText = "";
+  let currentStartSec = 0;
+  let currentEndSec = 0;
 
   for (const item of transcript) {
     const startSec = Math.floor(item.offset / 1000);
@@ -160,26 +170,45 @@ export async function extractYoutube(url: string): Promise<Extraction> {
       .replace(/&quot;/g, '"')
       .trim();
 
-    if (cleanText) {
-      parts.push({
-        text: cleanText,
-        meta: { startSec, endSec },
-      });
+    if (!cleanText) continue;
+
+    if (!currentText) {
+      currentStartSec = startSec;
+      currentText = cleanText;
+      currentEndSec = endSec;
+    } else {
+      currentText += " " + cleanText;
+      currentEndSec = endSec;
     }
+
+    if (currentText.length >= 350 || /[.!?]$/.test(cleanText)) {
+      parts.push({
+        text: currentText,
+        meta: { startSec: currentStartSec, endSec: currentEndSec },
+      });
+      currentText = "";
+    }
+  }
+
+  if (currentText) {
+    parts.push({
+      text: currentText,
+      meta: { startSec: currentStartSec, endSec: currentEndSec },
+    });
   }
 
   return assemble(parts, trackLanguage ?? undefined);
 }
 
 /**
- * Parses WEBVTT format strings into timestamped cues with startSec/endSec locators.
+ * Parses WEBVTT format strings into timestamped continuous cue blocks.
  */
-export function extractVtt(rawVtt: string): Extraction {
+export async function extractVtt(rawVtt: string): Promise<Extraction> {
   const lines = rawVtt.split(/\r?\n/);
   const timestampRegex = /^(\d{2}:)?(\d{2}):(\d{2})\.\d{3}\s+-->\s+(\d{2}:)?(\d{2}):(\d{2})\.\d{3}/;
   const headerRegex = /^(WEBVTT|NOTE|STYLE|REGION)/i;
 
-  const parts: { text: string; meta: Omit<Locator, "charStart" | "charEnd"> }[] = [];
+  const rawCues: { text: string; startSec: number; endSec: number }[] = [];
 
   let currentStartSec = 0;
   let currentEndSec = 0;
@@ -200,11 +229,43 @@ export function extractVtt(rawVtt: string): Extraction {
 
     const textOnly = line.replace(/<[^>]*>/g, "").trim();
     if (textOnly) {
-      parts.push({
+      rawCues.push({
         text: textOnly,
-        meta: { startSec: currentStartSec, endSec: currentEndSec },
+        startSec: currentStartSec,
+        endSec: currentEndSec,
       });
     }
+  }
+
+  const parts: { text: string; meta: Omit<Locator, "charStart" | "charEnd"> }[] = [];
+  let blockText = "";
+  let blockStartSec = 0;
+  let blockEndSec = 0;
+
+  for (const cue of rawCues) {
+    if (!blockText) {
+      blockStartSec = cue.startSec;
+      blockText = cue.text;
+      blockEndSec = cue.endSec;
+    } else {
+      blockText += " " + cue.text;
+      blockEndSec = cue.endSec;
+    }
+
+    if (blockText.length >= 350 || /[.!?]$/.test(cue.text)) {
+      parts.push({
+        text: blockText,
+        meta: { startSec: blockStartSec, endSec: blockEndSec },
+      });
+      blockText = "";
+    }
+  }
+
+  if (blockText) {
+    parts.push({
+      text: blockText,
+      meta: { startSec: blockStartSec, endSec: blockEndSec },
+    });
   }
 
   return assemble(parts);
@@ -213,7 +274,7 @@ export function extractVtt(rawVtt: string): Extraction {
 /**
  * Wraps plain text into a single extraction segment.
  */
-export function extractPlainText(rawText: string): Extraction {
+export async function extractPlainText(rawText: string): Promise<Extraction> {
   return assemble([{ text: rawText, meta: {} }]);
 }
 
