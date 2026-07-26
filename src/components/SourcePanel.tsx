@@ -172,10 +172,8 @@ export default function SourcePanel({
     e.stopPropagation();
     try {
       setActionSourceId(id);
-      const res = await fetch("/api/sources", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
+      const res = await fetch(`/api/sources/${id}/reindex`, {
+        method: "POST",
       });
       if (res.ok) {
         await fetchSources();

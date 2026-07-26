@@ -5,9 +5,12 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { qdrant, NOTEBOOK_COLLECTION_NAME } from "@/lib/qdrant";
 
-export async function createNotebook() {
+export async function createNotebook(formData?: FormData) {
+  const customTitle = formData?.get("title") as string;
+  const cleanTitle = customTitle?.trim() || "Untitled notebook";
+
   const notebook = await db.notebook.create({
-    data: { title: "Untitled notebook" },
+    data: { title: cleanTitle },
   });
   revalidatePath("/");
   redirect(`/notebook/${notebook.id}`);

@@ -14,7 +14,7 @@ export default async function HomePage() {
   return (
     <main className="min-h-screen bg-[#F5F7F8] text-[#141A22] px-6 py-12">
       <div className="mx-auto max-w-4xl space-y-8">
-        <div className="flex items-center justify-between border-b border-[#E2E7EA] pb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#E2E7EA] pb-6 gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-[#3B4CC0]" />
@@ -27,13 +27,19 @@ export default async function HomePage() {
             </p>
           </div>
 
-          <form action={createNotebook}>
+          <form action={createNotebook} className="flex items-center gap-2">
+            <input
+              type="text"
+              name="title"
+              placeholder="Notebook title..."
+              className="px-3 py-2 text-xs bg-white border border-[#E2E7EA] rounded-xl outline-none focus:ring-2 focus:ring-[#3B4CC0] w-44"
+            />
             <button
               type="submit"
-              className="flex items-center gap-2 rounded-xl bg-[#141A22] hover:bg-[#3B4CC0] px-4 py-2.5 text-xs font-semibold text-white shadow-xs transition cursor-pointer"
+              className="flex items-center gap-1.5 shrink-0 rounded-xl bg-[#141A22] hover:bg-[#3B4CC0] px-4 py-2.5 text-xs font-semibold text-white shadow-xs transition cursor-pointer"
             >
               <Plus className="h-4 w-4" />
-              New Notebook
+              Create
             </button>
           </form>
         </div>

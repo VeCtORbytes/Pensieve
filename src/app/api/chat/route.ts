@@ -126,9 +126,10 @@ export async function POST(req: NextRequest) {
       }
 
       if (searchResult && searchResult.length > 0) {
-        // 4. Score Floor Filtering (Floor = topScore * 0.7)
+        // 4. Score Floor Filtering (Floor = max(ABSOLUTE_FLOOR, topScore * 0.7))
+        const ABSOLUTE_FLOOR = 0.28;
         const topScore = searchResult[0].score || 0;
-        const floor = +(topScore * 0.7).toFixed(3);
+        const floor = Math.max(ABSOLUTE_FLOOR, +(topScore * 0.7).toFixed(3));
 
         const candidatePoints = searchResult.filter((p) => p.score >= floor);
 

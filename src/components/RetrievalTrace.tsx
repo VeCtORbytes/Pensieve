@@ -41,7 +41,7 @@ export default function RetrievalTrace({ trace, isStreaming = false }: Retrieval
         </div>
 
         <div className="flex items-center gap-2 text-neutral-400">
-          <span className="text-[10px] text-neutral-500">Floor: {trace.floor}</span>
+          <span className="text-[10px] text-neutral-500 font-mono">Relevance cutoff: {trace.floor.toFixed(2)}</span>
           {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
         </div>
       </button>
