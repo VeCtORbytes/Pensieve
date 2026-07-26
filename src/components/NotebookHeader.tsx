@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { ArrowLeft, Trash2, Volume2, Search, Loader2 } from "lucide-react";
+import { ArrowLeft, Trash2, Volume2, Search, Loader2, Sparkles } from "lucide-react";
 import { renameNotebook, deleteNotebook } from "@/app/actions/notebooks";
 import AudioPlayer from "@/components/AudioPlayer";
 import CommandPalette from "@/components/CommandPalette";
@@ -66,21 +66,17 @@ export default function NotebookHeader({
 
   return (
     <>
-      <header className="flex items-center gap-2 border-b border-rule bg-vessel px-3 py-2.5 sm:gap-3 sm:px-5 sm:py-3">
+      <header className="flex items-center gap-2 border-b border-[#E2E7EA] bg-white/80 backdrop-blur-md px-3 py-2.5 sm:gap-3 sm:px-6 sm:py-3 sticky top-0 z-30 shadow-2xs">
         <Link
           href="/"
           aria-label="Back to all notebooks"
-          className="shrink-0 rounded-lg p-1.5 text-neutral-400 transition hover:bg-white/70 hover:text-ink"
+          className="shrink-0 rounded-xl p-2 text-neutral-400 hover:text-[#141A22] hover:bg-[#F5F7F8] transition"
         >
           <ArrowLeft className="h-4 w-4" />
         </Link>
 
-        {/*
-          Sized to its content rather than filling the header. As a full-width
-          borderless input it looked like a search box and swallowed stray
-          keystrokes, which is how notebooks ended up with mangled titles.
-        */}
         <div className="flex min-w-0 flex-1 items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-[#1D9E75] shrink-0" />
           <input
             value={value}
             aria-label="Notebook title"
@@ -93,7 +89,7 @@ export default function NotebookHeader({
                 e.currentTarget.blur();
               }
             }}
-            className="w-full max-w-[min(28ch,100%)] truncate rounded-lg border border-transparent bg-transparent px-2 py-1 font-serif-display text-base font-normal text-ink outline-none transition hover:border-rule hover:bg-white/70 focus:border-rule focus:bg-white sm:max-w-[40ch]"
+            className="w-full max-w-[min(28ch,100%)] truncate rounded-lg border border-transparent bg-transparent px-2 py-1 font-serif-display text-lg font-normal text-[#141A22] outline-none transition hover:border-[#E2E7EA] hover:bg-white focus:border-[#3B4CC0] focus:bg-white sm:max-w-[40ch]"
           />
           {isPending && (
             <span className="hidden shrink-0 font-mono text-xs text-neutral-400 sm:inline">
@@ -106,11 +102,11 @@ export default function NotebookHeader({
         <button
           type="button"
           onClick={() => setIsCmdPaletteOpen(true)}
-          className="hidden shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border border-rule bg-white px-3 py-1.5 font-mono text-xs text-neutral-500 shadow-2xs transition hover:border-accent md:flex"
+          className="hidden shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border border-[#E2E7EA] bg-white px-3 py-1.5 font-mono text-xs text-neutral-500 shadow-2xs transition hover:border-[#3B4CC0] md:flex"
         >
           <Search className="h-3.5 w-3.5 text-neutral-400" />
           <span>Search</span>
-          <kbd className="rounded border border-rule bg-vessel px-1 text-[10px]">⌘K</kbd>
+          <kbd className="rounded border border-[#E2E7EA] bg-[#F5F7F8] px-1 text-[10px]">⌘K</kbd>
         </button>
 
         {/* Audio Overview Button */}
@@ -119,7 +115,7 @@ export default function NotebookHeader({
           disabled={isGeneratingAudio}
           onClick={handleGenerateAudioOverview}
           aria-label="Generate audio overview"
-          className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl bg-ink px-3 py-1.5 text-xs font-semibold text-white shadow-xs transition hover:bg-accent disabled:opacity-50 sm:px-3.5"
+          className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl bg-[#141A22] px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs transition hover:bg-[#3B4CC0] disabled:opacity-50"
         >
           {isGeneratingAudio ? (
             <>
@@ -128,7 +124,7 @@ export default function NotebookHeader({
             </>
           ) : (
             <>
-              <Volume2 className="h-3.5 w-3.5 text-amber-300" />
+              <Volume2 className="h-3.5 w-3.5 text-amber-300 animate-pulse" />
               <span className="hidden sm:inline">Audio Overview</span>
             </>
           )}
@@ -140,7 +136,7 @@ export default function NotebookHeader({
           onClick={remove}
           aria-label="Delete notebook"
           title="Delete notebook"
-          className="shrink-0 cursor-pointer rounded-lg p-1.5 text-neutral-400 transition hover:bg-red-50 hover:text-red-600"
+          className="shrink-0 cursor-pointer rounded-xl p-2 text-neutral-400 transition hover:bg-red-50 hover:text-red-600"
         >
           <Trash2 className="h-4 w-4" />
         </button>
