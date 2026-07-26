@@ -405,7 +405,9 @@ export default function ChatPanel({
                 {/* Avatar */}
                 <div
                   className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-semibold ${
-                    isUser ? "bg-ink text-white" : "bg-accent text-white shadow-xs"
+                    isUser
+                      ? "bg-[#8B5CF6] text-white shadow-md shadow-[#8B5CF6]/20"
+                      : "bg-[#111622] border border-[#222B3D] text-[#38BDF8]"
                   }`}
                 >
                   {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
@@ -423,10 +425,10 @@ export default function ChatPanel({
 
                   {m.content && (
                     <div
-                      className={`overflow-hidden break-words rounded-2xl p-3.5 text-xs leading-relaxed md:p-4 ${
+                      className={`overflow-hidden break-words rounded-2xl p-3.5 text-xs leading-relaxed md:p-4 shadow-sm ${
                         isUser
-                          ? "rounded-tr-none bg-ink text-white"
-                          : "rounded-tl-none border border-neutral-200/60 bg-neutral-100/80 text-neutral-800"
+                          ? "rounded-tr-none bg-[#8B5CF6] text-white font-medium"
+                          : "rounded-tl-none border border-[#222B3D] bg-[#111622] text-[#E6EDF3]"
                       }`}
                     >
                       {isUser ? (
@@ -440,8 +442,8 @@ export default function ChatPanel({
                   {/* Citation Chips under Assistant Answer: filename.pdf · p.4 */}
                   {!isUser && m.citations && m.citations.length > 0 && (
                     <div className="pt-1 space-y-1.5">
-                      <div className="flex items-center gap-1 text-[11px] font-semibold text-neutral-400">
-                        <BookOpen className="w-3 h-3 text-neutral-500" />
+                      <div className="flex items-center gap-1 text-[11px] font-semibold text-[#8B949E]">
+                        <BookOpen className="w-3 h-3 text-[#38BDF8]" />
                         <span>Citations ({m.citations.length})</span>
                       </div>
 
@@ -451,14 +453,14 @@ export default function ChatPanel({
                             key={c.number}
                             type="button"
                             onClick={() => handleCitationClick(c)}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium bg-white hover:bg-neutral-50 border border-neutral-200 rounded-lg shadow-xs text-neutral-700 hover:border-neutral-400 transition cursor-pointer"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium bg-[#111622] hover:bg-[#192030] border border-[#222B3D] hover:border-[#8B5CF6] rounded-xl shadow-xs text-[#E6EDF3] transition cursor-pointer"
                           >
-                            <span className="font-semibold text-emerald-700 bg-emerald-50 px-1 rounded">
+                            <span className="font-semibold text-[#10B981] bg-[#10B981]/10 px-1 rounded border border-[#10B981]/20">
                               [{c.number}]
                             </span>
                             <span className="max-w-[130px] truncate">{c.title}</span>
                             {c.humanLocator && (
-                              <span className="text-[10px] font-mono text-neutral-500">
+                              <span className="text-[10px] font-mono text-[#8B949E]">
                                 · {c.humanLocator}
                               </span>
                             )}
@@ -474,8 +476,8 @@ export default function ChatPanel({
         )}
 
         {isLoading && (
-          <div className="flex items-center gap-2 text-xs text-neutral-400 italic">
-            <Loader2 className="w-3.5 h-3.5 animate-spin text-neutral-500" />
+          <div className="flex items-center gap-2 text-xs text-[#8B949E] italic">
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-[#8B5CF6]" />
             <span>Pensieve is retrieving sources & streaming response...</span>
           </div>
         )}
@@ -483,16 +485,16 @@ export default function ChatPanel({
       </div>
 
       {/* Input Form */}
-      <div className="p-4 border-t border-neutral-200 bg-white">
+      <div className="p-4 border-t border-[#222B3D] bg-[#090D14]">
         {!isSignedIn ? (
-          <div className="flex items-center justify-between gap-3 p-3 bg-[#141A22]/5 border border-[#E2E7EA] rounded-xl text-xs">
-            <span className="text-[#141A22] font-medium">
+          <div className="flex items-center justify-between gap-3 p-3 bg-[#111622] border border-[#222B3D] rounded-2xl text-xs">
+            <span className="text-[#E6EDF3] font-medium">
               Sign in to ask questions and chat with this memory vessel.
             </span>
             <SignInButton mode="modal">
               <button
                 type="button"
-                className="px-3.5 py-1.5 bg-[#141A22] hover:bg-[#3B4CC0] text-white font-semibold rounded-lg shadow-2xs transition cursor-pointer text-xs shrink-0"
+                className="px-4 py-2 bg-[#8B5CF6] hover:bg-[#7C3AED] text-white font-semibold rounded-xl shadow-md transition cursor-pointer text-xs shrink-0"
               >
                 Sign In to Chat
               </button>
@@ -504,12 +506,12 @@ export default function ChatPanel({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask Pensieve a question about your notebook sources..."
-              className="w-full pl-4 pr-12 py-3 text-xs bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:ring-2 focus:ring-neutral-900 focus:bg-white transition"
+              className="w-full pl-4 pr-12 py-3 text-xs bg-[#111622] border border-[#222B3D] rounded-2xl outline-none focus:ring-2 focus:ring-[#8B5CF6] text-[#E6EDF3] placeholder:text-[#8B949E]/60 transition shadow-inner"
             />
             <button
               type="submit"
               disabled={isLoading || !input.trim()}
-              className="absolute right-2 p-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 disabled:opacity-40 transition cursor-pointer"
+              className="absolute right-2 p-2.5 bg-[#8B5CF6] text-white rounded-xl hover:bg-[#7C3AED] disabled:opacity-40 transition cursor-pointer shadow-md"
             >
               {isLoading ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />

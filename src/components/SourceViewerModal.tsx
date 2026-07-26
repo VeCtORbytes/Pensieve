@@ -243,16 +243,16 @@ export default function SourceViewerModal({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs animate-in fade-in duration-150 sm:p-6"
     >
       <div
-        className={`flex h-full w-full flex-col overflow-hidden bg-white shadow-2xl sm:max-w-4xl sm:rounded-2xl sm:border sm:border-neutral-200 ${
+        className={`flex h-full w-full flex-col overflow-hidden bg-[#111622] text-[#E6EDF3] shadow-2xl sm:max-w-4xl sm:rounded-2xl sm:border sm:border-[#222B3D] ${
           needsTallViewer ? "sm:h-[88vh]" : "sm:h-auto sm:max-h-[85vh]"
         }`}
       >
         {/* Modal Header */}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-200 bg-white px-4 py-3 sm:px-6 sm:py-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#222B3D] bg-[#090D14] px-4 py-3 sm:px-6 sm:py-4">
           <div className="flex min-w-0 items-center gap-3">
             <TypeBadge type={source.type} />
             <div className="min-w-0">
-              <h3 className="max-w-full truncate text-sm font-semibold text-neutral-900 sm:max-w-md">
+              <h3 className="max-w-full truncate text-sm font-semibold text-[#E6EDF3] sm:max-w-md">
                 {source.title}
               </h3>
               {source.url && (
@@ -260,7 +260,7 @@ export default function SourceViewerModal({
                   href={source.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[11px] text-neutral-400 hover:text-neutral-700 flex items-center gap-1 mt-0.5 truncate max-w-sm"
+                  className="text-[11px] text-[#8B949E] hover:text-[#38BDF8] flex items-center gap-1 mt-0.5 truncate max-w-sm"
                 >
                   <span className="truncate">{source.url}</span>
                   <ExternalLink className="w-3 h-3 shrink-0" />
@@ -272,8 +272,8 @@ export default function SourceViewerModal({
           <div className="flex items-center gap-2">
             {showSwitcher && (
               <div className="flex items-center gap-1.5">
-                <Languages className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
-                <div className="flex bg-neutral-100 p-0.5 rounded-lg text-xs font-medium">
+                <Languages className="w-3.5 h-3.5 text-[#8B949E] shrink-0" />
+                <div className="flex bg-[#090D14] p-0.5 rounded-xl border border-[#222B3D] text-xs font-medium">
                   {options.map((option) => {
                     const active = option.kind === variant;
                     return (
@@ -286,10 +286,10 @@ export default function SourceViewerModal({
                             ? option.label
                             : `${option.label} — generated on first use`
                         }
-                        className={`px-2.5 py-1.5 rounded-md transition cursor-pointer flex items-center gap-1 ${
+                        className={`px-2.5 py-1.5 rounded-lg transition cursor-pointer flex items-center gap-1 ${
                           active
-                            ? "bg-white text-neutral-900 shadow-xs"
-                            : "text-neutral-500 hover:text-neutral-900"
+                            ? "bg-[#8B5CF6] text-white font-semibold shadow-xs"
+                            : "text-[#8B949E] hover:text-[#E6EDF3]"
                         }`}
                       >
                         {active && variantLoading && (
