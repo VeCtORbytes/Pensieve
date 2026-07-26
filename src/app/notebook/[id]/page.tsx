@@ -15,16 +15,9 @@ export default async function NotebookPage({
   const { id } = await params;
   const { userId } = await auth();
 
-  // Optimized query: Select only lightweight fields and source count
-  // Avoid transferring heavy rawText / Base64 PDF data over network
   const notebook = await db.notebook.findUnique({
     where: { id },
-    select: {
-      id: true,
-      title: true,
-      userId: true,
-      _count: { select: { sources: true } },
-    },
+    include: { sources: { orderBy: { createdAt: "desc" } } },
   });
 
   if (!notebook) notFound();
@@ -34,8 +27,7 @@ export default async function NotebookPage({
     notFound();
   }
 
-  const sourceCount = notebook._count.sources;
-  const hasSources = sourceCount > 0;
+  const hasSources = notebook.sources.length > 0;
 
   return (
     <div className="flex h-screen flex-col bg-vessel text-ink">
@@ -46,7 +38,7 @@ export default async function NotebookPage({
       ) : (
         <NotebookWorkspace
           notebookId={notebook.id}
-          sourceCount={sourceCount}
+          sourceCount={notebook.sources.length}
         />
       )}
     </div>

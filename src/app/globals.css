@@ -3,16 +3,12 @@
 @tailwind utilities;
 
 :root {
-  --ink: #E6EDF3;
-  --muted: #8B949E;
-  --vessel: #090D14;
-  --surface: #111622;
-  --surface-elevated: #192030;
-  --rule: #222B3D;
-  --accent: #8B5CF6;
-  --glow: #38BDF8;
-  --found: #10B981;
-  --gold: #F59E0B;
+  --ink: #141A22;
+  --vessel: #F5F7F8;
+  --surface: #FFFFFF;
+  --rule: #E2E7EA;
+  --accent: #3B4CC0;
+  --found: #1D9E75;
 }
 
 :where(button, a, input, textarea, select, [tabindex]):focus-visible {
@@ -30,29 +26,27 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Ambient Pensieve Memory Mesh Background */
+/* Ambient Subtle Mesh Background */
 .bg-mesh {
-  background-color: #090D14;
   background-image: 
-    radial-gradient(at 15% 15%, rgba(139, 92, 246, 0.12) 0px, transparent 45%),
-    radial-gradient(at 85% 85%, rgba(56, 189, 248, 0.10) 0px, transparent 45%),
-    radial-gradient(at 50% 50%, rgba(9, 13, 20, 1) 0px, transparent 100%);
+    radial-gradient(at 15% 15%, rgba(59, 76, 192, 0.05) 0px, transparent 50%),
+    radial-gradient(at 85% 85%, rgba(29, 158, 117, 0.05) 0px, transparent 50%),
+    radial-gradient(at 50% 50%, rgba(245, 247, 248, 1) 0px, transparent 100%);
 }
 
-/* Glassmorphism Dark Arcane Utilities */
+/* Glassmorphism Utilities with GPU acceleration */
 .glass-panel {
-  background: rgba(17, 22, 34, 0.85);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(34, 43, 61, 0.8);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(226, 231, 234, 0.8);
   transform: translateZ(0);
 }
 
 .glass-header {
-  background: rgba(9, 13, 20, 0.90);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(34, 43, 61, 0.8);
+  background: rgba(245, 247, 248, 0.9);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   transform: translateZ(0);
 }
 
@@ -69,7 +63,7 @@ body {
   font-family: var(--font-mono), monospace;
 }
 
-/* Custom Scrollbar Styling for Dark Theme */
+/* Custom Scrollbar Styling */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -80,12 +74,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #222B3D;
+  background: #E2E7EA;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #37435B;
+  background: #C4CDD3;
 }
 
 /* Keyframe Animations */

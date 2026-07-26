@@ -16,17 +16,6 @@ export async function GET(req: NextRequest) {
 
   const sources = await db.source.findMany({
     where: { notebookId },
-    select: {
-      id: true,
-      notebookId: true,
-      type: true,
-      title: true,
-      url: true,
-      status: true,
-      error: true,
-      chunkCount: true,
-      createdAt: true,
-    },
     orderBy: { createdAt: "desc" },
   });
 

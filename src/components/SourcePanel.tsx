@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, FileText, Upload, Link2, Video, File, Loader2, X, Trash2, RotateCw, Sparkles } from "lucide-react";
+import { Plus, FileText, Upload, Link2, Video, File, Loader2, X, Trash2, RotateCw } from "lucide-react";
 import SourceViewerModal from "@/components/SourceViewerModal";
 
 interface Source {
@@ -172,20 +172,14 @@ export default function SourcePanel({
       bodyContent = url;
     }
 
-    if (!title.trim()) {
-      setSubmitError("Title is required");
-      return;
-    }
+    if (!title.trim()) return;
+    if ((activeTab === "website" || activeTab === "youtube") && !url.trim()) return;
+    if ((activeTab === "text" || activeTab === "vtt" || activeTab === "pdf") && !content.trim()) return;
 
-    if (!bodyContent && !bodyUrl) {
-      setSubmitError("Please provide content or URL");
-      return;
-    }
+    setIsSubmitting(true);
+    setSubmitError("");
 
     try {
-      setIsSubmitting(true);
-      setSubmitError("");
-
       const res = await fetch("/api/sources", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -194,13 +188,13 @@ export default function SourcePanel({
           type: sourceType,
           title: title.trim(),
           content: bodyContent,
-          url: bodyUrl,
+          url: bodyUrl || undefined,
         }),
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to create source");
+        const errData = await res.json();
+        throw new Error(errData.error || "Failed to create source");
       }
 
       resetForm();
@@ -277,7 +271,8 @@ export default function SourcePanel({
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      setContent((event.target?.result as string) || "");
+      const base64 = event.target?.result as string;
+      setContent(base64 || "");
     };
     reader.readAsDataURL(file);
   }
@@ -290,13 +285,21 @@ export default function SourcePanel({
       }}
       onDragLeave={() => setIsDraggingOver(false)}
       onDrop={handleDrop}
-      className={`relative flex h-full flex-col bg-[#090D14] text-[#E6EDF3] border-r border-[#222B3D] transition ${
-        isDraggingOver ? "ring-2 ring-[#8B5CF6] bg-[#8B5CF6]/5" : ""
+      className={`flex flex-col h-full bg-vessel relative transition ${
+        isDraggingOver ? "ring-2 ring-inset ring-accent bg-blue-50/40" : ""
       }`}
     >
+      {/* Drag Over Overlay */}
+      {isDraggingOver && (
+        <div className="absolute inset-0 z-30 bg-accent/10 backdrop-blur-2xs flex flex-col items-center justify-center text-center p-4">
+          <Upload className="w-8 h-8 text-accent animate-bounce mb-2" />
+          <p className="text-xs font-semibold text-accent">Drop files here to ingest into Pensieve</p>
+        </div>
+      )}
+
       {/* Quiet Rail Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[#222B3D]">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-[#8B949E]">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-rule">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-ink/60">
           Sources ({sources.length})
         </span>
         <button
@@ -305,37 +308,36 @@ export default function SourcePanel({
             resetForm();
             setIsModalOpen(true);
           }}
-          className="p-1.5 text-xs text-[#E6EDF3] hover:bg-[#111622] rounded-lg transition cursor-pointer"
+          className="p-1.5 text-xs text-ink hover:bg-rule rounded-lg transition cursor-pointer"
           title="Add Source"
         >
-          <Plus className="w-4 h-4 text-[#8B5CF6]" />
+          <Plus className="w-4 h-4" />
         </button>
       </div>
 
       {/* Source List */}
       <div className="flex-1 overflow-y-auto px-2 py-3 space-y-1">
         {sources.length === 0 ? (
-          <div className="py-12 text-center space-y-2">
-            <Sparkles className="w-6 h-6 mx-auto text-[#8B949E]/40" />
-            <p className="text-xs text-[#8B949E]">No sources in this vessel.</p>
-            <p className="text-[10px] text-[#8B949E]/60">Drag and drop PDF or VTT files here.</p>
+          <div className="py-8 text-center text-neutral-400">
+            <p className="text-xs text-neutral-500">No sources added yet.</p>
+            <p className="text-[10px] text-neutral-400 mt-1">Drag and drop PDF or VTT files here.</p>
           </div>
         ) : (
           sources.map((s) => (
             <div
               key={s.id}
               onClick={() => setSelectedViewerSource(s)}
-              className="group p-3 rounded-xl bg-[#111622]/60 hover:bg-[#111622] border border-transparent hover:border-[#8B5CF6]/40 transition cursor-pointer space-y-1.5 text-xs shadow-2xs"
+              className="group p-2.5 rounded-lg hover:bg-white transition cursor-pointer space-y-1 text-xs"
             >
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 truncate flex-1">
                   <StatusDot status={s.status} />
-                  <span className="font-medium text-[#E6EDF3] truncate group-hover:text-[#38BDF8] transition">
+                  <span className="font-medium text-ink truncate group-hover:text-accent">
                     {s.title}
                   </span>
                 </div>
 
-                {/* Action Controls */}
+                {/* Always visible on touch, where there is no hover to reveal them. */}
                 <div className="flex items-center gap-1 transition md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100">
                   <button
                     type="button"
@@ -343,7 +345,7 @@ export default function SourcePanel({
                     aria-label={`Re-index ${s.title}`}
                     disabled={actionSourceId === s.id}
                     onClick={(e) => handleReindexSource(e, s.id)}
-                    className="p-1 text-[#8B949E] hover:text-[#E6EDF3] rounded transition cursor-pointer"
+                    className="p-1 text-neutral-400 hover:text-neutral-700 rounded transition cursor-pointer"
                   >
                     <RotateCw className={`w-3 h-3 ${actionSourceId === s.id ? "animate-spin" : ""}`} />
                   </button>
@@ -353,14 +355,14 @@ export default function SourcePanel({
                     aria-label={`Delete ${s.title}`}
                     disabled={actionSourceId === s.id}
                     onClick={(e) => handleDeleteSource(e, s.id)}
-                    className="p-1 text-[#8B949E] hover:text-red-400 rounded transition cursor-pointer"
+                    className="p-1 text-neutral-400 hover:text-red-600 rounded transition cursor-pointer"
                   >
                     <Trash2 className="w-3 h-3" />
                   </button>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between gap-2 text-[10px] text-[#8B949E] font-mono pl-3.5">
+              <div className="flex items-center justify-between gap-2 text-[10px] text-neutral-400 font-mono pl-3.5">
                 <span className="uppercase">{s.type}</span>
                 <span className="shrink-0">
                   {s.status === "READY"
@@ -392,24 +394,21 @@ export default function SourcePanel({
 
       {/* Add Source Modal Dialog */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-[#111622] rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-5 border border-[#222B3D] text-[#E6EDF3]">
-            <div className="flex items-center justify-between border-b border-[#222B3D] pb-3">
-              <h3 className="text-base font-serif-display font-normal text-[#E6EDF3] flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-[#8B5CF6]" />
-                Add Knowledge Source
-              </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-xl max-w-xl w-full p-6 shadow-2xl space-y-5 border border-rule">
+            <div className="flex items-center justify-between border-b border-rule pb-3">
+              <h3 className="text-base font-serif-display font-normal text-ink">Add Knowledge Source</h3>
               <button
                 type="button"
                 onClick={handleCloseModal}
-                className="text-[#8B949E] hover:text-[#E6EDF3] cursor-pointer"
+                className="text-neutral-400 hover:text-neutral-600 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Tab navigation */}
-            <div className="flex border-b border-[#222B3D] text-xs overflow-x-auto">
+            <div className="flex border-b border-rule text-xs overflow-x-auto">
               {[
                 { id: "text", label: "Text", icon: FileText },
                 { id: "pdf", label: "PDF", icon: File },
@@ -426,10 +425,10 @@ export default function SourcePanel({
                       setActiveTab(tab.id as TabType);
                       setSubmitError("");
                     }}
-                    className={`flex items-center gap-1.5 px-3.5 py-2.5 border-b-2 font-medium transition whitespace-nowrap cursor-pointer ${
+                    className={`flex items-center gap-1.5 px-3 py-2 border-b-2 font-medium transition whitespace-nowrap cursor-pointer ${
                       activeTab === tab.id
-                        ? "border-[#8B5CF6] text-[#38BDF8]"
-                        : "border-transparent text-[#8B949E] hover:text-[#E6EDF3]"
+                        ? "border-accent text-accent"
+                        : "border-transparent text-neutral-500 hover:text-ink"
                     }`}
                   >
                     <Icon className="w-3.5 h-3.5" />
@@ -441,7 +440,7 @@ export default function SourcePanel({
 
             <form onSubmit={handleCreateSource} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-[#8B949E] mb-1">
+                <label className="block text-xs font-medium text-neutral-700 mb-1">
                   Source Title
                 </label>
                 <input
@@ -450,100 +449,115 @@ export default function SourcePanel({
                   placeholder="e.g. Technical Manual / Lecture Video"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-xs bg-[#090D14] border border-[#222B3D] rounded-xl outline-none focus:ring-2 focus:ring-[#8B5CF6] text-[#E6EDF3] transition"
+                  className="w-full px-3 py-2 text-xs border border-rule rounded-lg outline-none focus:ring-2 focus:ring-accent"
                 />
               </div>
 
-              {activeTab === "text" && (
-                <div>
-                  <label className="block text-xs font-medium text-[#8B949E] mb-1">
-                    Raw Text Content
-                  </label>
-                  <textarea
-                    rows={6}
-                    required
-                    placeholder="Paste notes, transcripts, or document text here..."
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    className="w-full px-3.5 py-2.5 text-xs bg-[#090D14] border border-[#222B3D] rounded-xl outline-none focus:ring-2 focus:ring-[#8B5CF6] text-[#E6EDF3] transition font-mono"
-                  />
-                </div>
-              )}
-
+              {/* PDF Tab */}
               {activeTab === "pdf" && (
                 <div>
-                  <label className="block text-xs font-medium text-[#8B949E] mb-1">
-                    Upload PDF Document
+                  <label className="block text-xs font-medium text-neutral-700 mb-1">
+                    Select .pdf File
                   </label>
                   <input
                     type="file"
                     accept=".pdf"
+                    required={!content}
                     onChange={handlePdfUpload}
-                    className="w-full px-3.5 py-2.5 text-xs bg-[#090D14] border border-[#222B3D] rounded-xl text-[#E6EDF3] file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#8B5CF6] file:text-white hover:file:bg-[#7C3AED] transition"
+                    className="w-full text-xs text-neutral-500 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-neutral-100 file:text-neutral-700 hover:file:bg-neutral-200 cursor-pointer"
                   />
                 </div>
               )}
 
-              {(activeTab === "website" || activeTab === "youtube") && (
+              {/* Website Tab */}
+              {activeTab === "website" && (
                 <div>
-                  <label className="block text-xs font-medium text-[#8B949E] mb-1">
-                    {activeTab === "website" ? "Website URL" : "YouTube Video URL"}
+                  <label className="block text-xs font-medium text-neutral-700 mb-1">
+                    Website URL
                   </label>
                   <input
                     type="url"
                     required
-                    placeholder={
-                      activeTab === "website"
-                        ? "https://example.com/article"
-                        : "https://www.youtube.com/watch?v=..."
-                    }
+                    placeholder="https://example.com/article"
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
-                    className="w-full px-3.5 py-2.5 text-xs bg-[#090D14] border border-[#222B3D] rounded-xl outline-none focus:ring-2 focus:ring-[#8B5CF6] text-[#E6EDF3] transition"
+                    className="w-full px-3 py-2 text-xs border border-rule rounded-lg outline-none focus:ring-2 focus:ring-accent"
                   />
                 </div>
               )}
 
+              {/* YouTube Tab */}
+              {activeTab === "youtube" && (
+                <div>
+                  <label className="block text-xs font-medium text-neutral-700 mb-1">
+                    YouTube Video URL
+                  </label>
+                  <input
+                    type="url"
+                    required
+                    placeholder="https://www.youtube.com/watch?v=..."
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-rule rounded-lg outline-none focus:ring-2 focus:ring-accent"
+                  />
+                </div>
+              )}
+
+              {/* VTT Tab */}
               {activeTab === "vtt" && (
                 <div>
-                  <label className="block text-xs font-medium text-[#8B949E] mb-1">
-                    Upload WebVTT Transcript File
+                  <label className="block text-xs font-medium text-neutral-700 mb-1">
+                    Select .vtt File
                   </label>
                   <input
                     type="file"
-                    accept=".vtt"
+                    accept=".vtt,.txt"
                     onChange={handleVttUpload}
-                    className="w-full px-3.5 py-2.5 text-xs bg-[#090D14] border border-[#222B3D] rounded-xl text-[#E6EDF3] file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#8B5CF6] file:text-white hover:file:bg-[#7C3AED] transition"
+                    className="w-full text-xs text-neutral-500 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-neutral-100 file:text-neutral-700 hover:file:bg-neutral-200 cursor-pointer"
+                  />
+                </div>
+              )}
+
+              {/* Text Area */}
+              {(activeTab === "text" || activeTab === "vtt") && (
+                <div>
+                  <label className="block text-xs font-medium text-neutral-700 mb-1">
+                    Content Text
+                  </label>
+                  <textarea
+                    required
+                    rows={5}
+                    placeholder="Paste text or notes..."
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                    className="w-full px-3 py-2 text-xs font-mono border border-rule rounded-lg outline-none focus:ring-2 focus:ring-accent"
                   />
                 </div>
               )}
 
               {submitError && (
-                <div className="p-2.5 bg-red-950/50 border border-red-900/60 rounded-xl text-xs text-red-300">
-                  {submitError}
-                </div>
+                <p className="text-xs text-red-600 bg-red-50 p-2 rounded">{submitError}</p>
               )}
 
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={handleCloseModal}
-                  className="px-4 py-2 text-xs font-semibold text-[#8B949E] hover:text-[#E6EDF3] transition"
+                  className="px-4 py-2 text-xs font-medium text-neutral-600 hover:bg-neutral-100 rounded-lg cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#8B5CF6] hover:bg-[#7C3AED] text-xs font-semibold text-white shadow-md transition disabled:opacity-50"
+                  className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-white bg-ink hover:bg-accent rounded-lg disabled:opacity-50 cursor-pointer transition"
                 >
                   {isSubmitting ? (
                     <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span>Ingesting...</span>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> Ingesting...
                     </>
                   ) : (
-                    <span>Add Source</span>
+                    "Ingest Source"
                   )}
                 </button>
               </div>
@@ -557,10 +571,10 @@ export default function SourcePanel({
 
 function StatusDot({ status }: { status: Source["status"] }) {
   if (status === "READY") {
-    return <div className="w-2 h-2 rounded-full bg-[#10B981] shrink-0" />;
+    return <span className="w-2 h-2 rounded-full bg-accent shrink-0" title="Ready" />;
   }
   if (status === "FAILED") {
-    return <div className="w-2 h-2 rounded-full bg-red-500 shrink-0" />;
+    return <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" title="Failed" />;
   }
-  return <div className="w-2 h-2 rounded-full bg-[#F59E0B] animate-pulse shrink-0" />;
+  return <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" title="Processing" />;
 }

@@ -15,10 +15,13 @@ import { loadVariantsForSources, sliceVariant } from "@/lib/variants";
 import { openai } from "@ai-sdk/openai";
 import { streamText } from "ai";
 
+import { executeAdvancedRAGSearch } from "@/lib/ragPipeline";
+
 export const maxDuration = 60;
 
 export interface CandidateTrace {
   score: number;
+  rrfScore?: number;
   kept: boolean;
   title: string;
   humanLocator: string;
@@ -26,6 +29,7 @@ export interface CandidateTrace {
   variant?: VariantKind;
   /** Set when this hit was dropped as the same passage in another language. */
   duplicateOf?: VariantKind;
+  matchedQueryTypes?: string[];
 }
 
 export interface RetrievalTracePayload {
@@ -34,6 +38,9 @@ export interface RetrievalTracePayload {
   floor: number;
   /** Language the context and answer were rendered in. */
   readingVariant?: VariantKind;
+  stepBackQuery?: string;
+  hydePassage?: string;
+  rewrittenQuery?: string;
 }
 
 export interface CitationPayload {
@@ -116,24 +123,18 @@ export async function POST(req: NextRequest) {
     let answerLanguage: string | null = null;
 
     try {
-      // 2. Generate Query Embedding
-      const [queryVector] = await generateEmbeddings([userPrompt]);
-
-      // 3. Search Qdrant candidates (top 20)
-      await ensureCollection();
-
-      const searchResult = await qdrant.search(NOTEBOOK_COLLECTION_NAME, {
-        vector: queryVector,
-        filter: {
-          must: [
-            {
-              key: "notebookId",
-              match: { value: notebookId },
-            },
-          ],
-        },
+      // 2. Advanced RAG Engine: Multi-Query Search (Step-Back, HyDE, RRF Fusion)
+      const ragResult = await executeAdvancedRAGSearch({
+        notebookId,
+        userPrompt,
+        history: messages.slice(0, -1),
         limit: 20,
       });
+
+      const { variants, fusedPoints: searchResult } = ragResult;
+      trace.stepBackQuery = variants.stepBackQuery;
+      trace.hydePassage = variants.hydePassage;
+      trace.rewrittenQuery = variants.rewrittenQuery;
 
       if (searchResult && searchResult.length > 0) {
         // 4. Score Floor Filtering
@@ -201,15 +202,20 @@ export async function POST(req: NextRequest) {
             const loc = (p.payload?.locator as Locator) || null;
             return {
               score: +p.score.toFixed(3),
+              rrfScore: (p as any).rrfScore,
               kept: selectedPoints.includes(p),
               title: meta.title,
               humanLocator: locatorLabel(meta.type, loc),
               variant: (p.payload?.variantKind as VariantKind) || "ORIGINAL",
               duplicateOf: duplicateReason.get(String(p.id)),
+              matchedQueryTypes: (p as any).matchedQueryTypes,
             };
           }),
           floor,
           readingVariant,
+          stepBackQuery: variants.stepBackQuery,
+          hydePassage: variants.hydePassage,
+          rewrittenQuery: variants.rewrittenQuery,
         };
 
         // 9. Format Citations
