@@ -62,19 +62,40 @@ export default function SourcePanel({
     try {
       const res = await fetch(`/api/sources?notebookId=${notebookId}`);
       if (res.ok) {
-        const data = await res.json();
-        setSources(data);
+        const data: Source[] = await res.json();
+        setSources((prev) => {
+          if (
+            prev.length === data.length &&
+            prev.every(
+              (s, i) =>
+                data[i] &&
+                s.id === data[i].id &&
+                s.status === data[i].status &&
+                s.chunkCount === data[i].chunkCount
+            )
+          ) {
+            return prev;
+          }
+          return data;
+        });
       }
     } catch (err) {
-      console.error("Failed to poll sources:", err);
+      console.error("Failed to fetch sources:", err);
     }
   }, [notebookId]);
 
   useEffect(() => {
     fetchSources();
-    const interval = setInterval(fetchSources, 2000);
+
+    const hasActiveProcessing = sources.some((s) =>
+      ["QUEUED", "EXTRACTING", "TRANSLATING", "EMBEDDING"].includes(s.status)
+    );
+
+    if (!hasActiveProcessing) return;
+
+    const interval = setInterval(fetchSources, 3000);
     return () => clearInterval(interval);
-  }, [fetchSources]);
+  }, [fetchSources, sources]);
 
   function resetForm() {
     setTitle("");

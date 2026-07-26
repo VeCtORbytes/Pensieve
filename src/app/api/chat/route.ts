@@ -77,9 +77,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // The reader's explicit language choice, if they made one. When absent the
-    // variant is inferred from the question's own language further down, so
-    // asking in English about a Hindi source answers in English by default.
     const explicitVariant: VariantKind | null = isVariantKind(variant) ? variant : null;
 
     const lastMessage = messages[messages.length - 1];
@@ -111,8 +108,7 @@ export async function POST(req: NextRequest) {
       // 2. Generate Query Embedding
       const [queryVector] = await generateEmbeddings([userPrompt]);
 
-      // 3. Search Qdrant candidates (top 20). ensureCollection guarantees the
-      // collection and the notebookId payload index exist before filtering.
+      // 3. Search Qdrant candidates (top 20)
       await ensureCollection();
 
       const searchResult = await qdrant.search(NOTEBOOK_COLLECTION_NAME, {
@@ -129,11 +125,7 @@ export async function POST(req: NextRequest) {
       });
 
       if (searchResult && searchResult.length > 0) {
-        // 4. Score Floor Filtering.
-        // The relative floor only trims a long tail when there is a standout
-        // match. On text-embedding-3-small genuinely relevant chunks sit around
-        // 0.30-0.55, so the ratio has to stay low or a strong top hit raises the
-        // bar and prunes valid supporting context.
+        // 4. Score Floor Filtering
         const ABSOLUTE_FLOOR = 0.28;
         const RELATIVE_FLOOR_RATIO = 0.55;
         const topScore = searchResult[0].score || 0;
@@ -141,19 +133,11 @@ export async function POST(req: NextRequest) {
 
         const scoredPoints = searchResult.filter((p) => p.score >= floor);
 
-        // 5. Cross-variant dedupe.
-        // A passage is indexed once per language, so the same content can surface
-        // twice — once from the Hindi vectors, once from the English. Segment
-        // ordinals are identical across variants, so overlapping ranges from
-        // *different* variants are the same passage: keep the better-scoring one.
-        // Overlaps within one variant are left alone, since pieces of a long
-        // segment are genuinely distinct text.
+        // 5. Cross-variant dedupe
         const { kept: candidatePoints, duplicateOf: duplicateReason } =
           dedupeByPassage(scoredPoints);
 
-        // 6. Diversity Selection: prefer breadth across sources, then backfill
-        // to the context budget so a single-source question still gets enough
-        // context to answer (and to summarise) from.
+        // 6. Diversity Selection
         const MAX_CONTEXT_CHUNKS = 6;
         const MAX_PER_SOURCE = 2;
 
@@ -181,10 +165,7 @@ export async function POST(req: NextRequest) {
           titleMap.set(s.id, { title: s.title, type: s.type, language: s.language })
         );
 
-        // 7. Resolve the reading language.
-        // An explicit choice from the switcher always wins. Otherwise infer it
-        // from the question, so an English question about a Hindi source is
-        // answered in English rather than silently in Hindi.
+        // 7. Resolve reading language
         const topSourceId = (selectedPoints[0]?.payload?.sourceId as string) || "";
         const topSourceLanguage = titleMap.get(topSourceId)?.language ?? null;
 
@@ -212,24 +193,17 @@ export async function POST(req: NextRequest) {
           readingVariant,
         };
 
-        // 8. Render the selected passages in the language the reader has open.
-        // The chunk that matched may have come from a different variant's
-        // vectors; its segment range is re-sliced out of the reading variant so
-        // the model quotes what the user actually sees.
+        // 9. Format Citations
         const selectedSourceIds = Array.from(
           new Set(selectedPoints.map((p) => (p.payload?.sourceId as string) || "").filter(Boolean))
         );
         const readingVariants = await loadVariantsForSources(selectedSourceIds, readingVariant);
 
-        // If the reader's language has not been generated for a source yet, the
-        // original text is a better fallback than whichever variant happened to
-        // match — a Hinglish reader wants the Hindi wording, not the English one.
         const fallbackVariants =
           readingVariant === "ORIGINAL"
             ? new Map()
             : await loadVariantsForSources(selectedSourceIds, "ORIGINAL");
 
-        // 9. Format Citations
         citations = selectedPoints.map((p, idx) => {
           const sId = (p.payload?.sourceId as string) || "";
           const meta =
@@ -270,7 +244,6 @@ export async function POST(req: NextRequest) {
             )
             .join("\n\n");
 
-          // Answer in the language of the text the reader is actually looking at.
           answerLanguage = resolveAnswerLanguage(readingVariant, topSourceLanguage);
         }
       }
@@ -287,23 +260,27 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Strict Refusal Grounding Prompt
+    const isGreetingOrMeta = /^(hi|hello|hey|greetings|who are you|what is this|what can you do|help)\b/i.test(
+      userPrompt.trim()
+    );
+
     const languageDirective = answerLanguage
-      ? `\nWrite your entire answer in ${answerLanguage}, matching the language the ` +
-        `context sources are written in. Keep the [1], [2] citation markers as digits ` +
-        `in square brackets regardless of language.`
+      ? `\nWrite your entire answer in ${answerLanguage}, matching the language the context sources are written in. Keep [1], [2] citation markers as numbers in square brackets.`
       : "";
 
-    const systemPrompt = `You are Pensieve AI Notebook, an expert grounded research assistant.
-Answer the user's question using ONLY the numbered context sources below.
-When stating facts from context, cite the source using brackets like [1], [2].
-If the provided sources do not contain enough information to answer the question, state clearly that the sources do not cover it and stop. Do NOT invent information or use general knowledge.${languageDirective}
+    const systemPrompt = `You are Pensieve AI Notebook, a grounded research assistant.
+${
+  isGreetingOrMeta
+    ? "The user is greeting you or asking about capabilities. Respond warmly, introduce yourself as Pensieve AI Notebook, and explain that you answer questions grounded strictly in their ingested documents with exact page and timestamp citations."
+    : "Answer the user's question accurately using ONLY the numbered context sources below. When stating facts from context, cite the source using brackets like [1], [2]. If the provided sources do not contain enough information to answer the question, state clearly that the sources do not cover it and stop. Do NOT invent information or use general knowledge."
+}
+${languageDirective}
 
 === NUMBERED CONTEXT SOURCES ===
 ${contextString}
 =================================`;
 
-    // 8. Stream Response using ReadableStream data protocol (data-trace, data-citations, then text deltas)
+    // Stream Response using ReadableStream data protocol
     const result = streamText({
       model: openai("gpt-4o-mini"),
       system: systemPrompt,
@@ -330,7 +307,6 @@ ${contextString}
     const encoder = new TextEncoder();
     const customStream = new ReadableStream({
       async start(controller) {
-        // Enqueue data-trace and data-citations data parts
         controller.enqueue(
           encoder.encode(`2:${JSON.stringify([{ type: "trace", data: trace }])}\n`)
         );
@@ -338,7 +314,6 @@ ${contextString}
           encoder.encode(`2:${JSON.stringify([{ type: "citations", data: citations }])}\n`)
         );
 
-        // Enqueue text stream chunks
         for await (const textChunk of result.textStream) {
           controller.enqueue(encoder.encode(`0:${JSON.stringify(textChunk)}\n`));
         }

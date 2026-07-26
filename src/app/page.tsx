@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Sparkles, Plus, BookOpen, Layers, Database, ArrowRight } from "lucide-react";
 import { db } from "@/lib/db";
 import { createNotebook } from "./actions/notebooks";
+import AuthControls from "@/components/AuthControls";
 
 export const dynamic = "force-dynamic";
 
@@ -16,8 +17,17 @@ export default async function HomePage() {
   return (
     <main className="min-h-screen bg-[#F5F7F8] bg-mesh text-[#141A22] px-6 py-12">
       <div className="mx-auto max-w-5xl space-y-10">
+        {/* Navigation Bar with Auth */}
+        <div className="flex items-center justify-between pb-4 border-b border-[#E2E7EA]">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-[#3B4CC0]" />
+            <span className="font-serif-display text-2xl font-normal text-[#141A22]">Pensieve</span>
+          </div>
+          <AuthControls />
+        </div>
+
         {/* Top Hero Bar */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-[#E2E7EA] pb-8 gap-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between pb-8 gap-6 border-b border-[#E2E7EA]">
           <div className="space-y-3">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-[#E2E7EA] shadow-2xs">
               <Sparkles className="w-3.5 h-3.5 text-[#3B4CC0] animate-pulse" />

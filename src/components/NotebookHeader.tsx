@@ -2,11 +2,12 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { ArrowLeft, Trash2, Volume2, Search, Loader2, Sparkles } from "lucide-react";
+import { ArrowLeft, Trash2, Volume2, Search, Loader2 } from "lucide-react";
 import { renameNotebook, deleteNotebook } from "@/app/actions/notebooks";
 import AudioPlayer from "@/components/AudioPlayer";
 import CommandPalette from "@/components/CommandPalette";
 import SourceViewerModal from "@/components/SourceViewerModal";
+import AuthControls from "@/components/AuthControls";
 
 export default function NotebookHeader({
   id,
@@ -140,6 +141,9 @@ export default function NotebookHeader({
         >
           <Trash2 className="h-4 w-4" />
         </button>
+
+        {/* Auth Controls */}
+        <AuthControls />
       </header>
 
       {/* Floating Audio Player */}

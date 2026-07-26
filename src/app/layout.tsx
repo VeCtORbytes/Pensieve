@@ -1,3 +1,4 @@
+import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import { Instrument_Serif, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
@@ -33,8 +34,10 @@ export default function RootLayout({
       lang="en"
       className={`${serifFont.variable} ${interFont.variable} ${monoFont.variable}`}
     >
-      <body className="antialiased bg-vessel text-ink font-sans-body selection:bg-accent selection:text-white">
-        {children}
+      <body className="antialiased bg-[#F5F7F8] text-[#141A22] font-sans-body selection:bg-[#3B4CC0] selection:text-white">
+        <ClerkProvider>
+          {children}
+        </ClerkProvider>
       </body>
     </html>
   );
