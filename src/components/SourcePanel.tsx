@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Plus, FileText, Upload, Link2, Video, File, Loader2, X, Trash2, RotateCw } from "lucide-react";
 import SourceViewerModal from "@/components/SourceViewerModal";
 
@@ -18,13 +19,27 @@ interface Source {
   createdAt: string;
 }
 
-type TabType = "text" | "vtt" | "pdf" | "website" | "youtube";
+export type TabType = "text" | "vtt" | "pdf" | "website" | "youtube";
 
-export default function SourcePanel({ notebookId }: { notebookId: string }) {
+interface SourcePanelProps {
+  notebookId: string;
+  initialOpenModal?: boolean;
+  initialTab?: TabType;
+  onModalClose?: () => void;
+}
+
+export default function SourcePanel({
+  notebookId,
+  initialOpenModal = false,
+  initialTab = "text",
+  onModalClose,
+}: SourcePanelProps) {
+  const router = useRouter();
+
   const [sources, setSources] = useState<Source[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(initialOpenModal);
   const [selectedViewerSource, setSelectedViewerSource] = useState<Source | null>(null);
-  const [activeTab, setActiveTab] = useState<TabType>("text");
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [actionSourceId, setActionSourceId] = useState<string | null>(null);
 
   // Form states
@@ -33,6 +48,19 @@ export default function SourcePanel({ notebookId }: { notebookId: string }) {
   const [url, setUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
+
+  // Sync initialOpenModal & initialTab when props change
+  useEffect(() => {
+    if (initialOpenModal) {
+      setIsModalOpen(true);
+    }
+  }, [initialOpenModal]);
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   const fetchSources = useCallback(async () => {
     try {
@@ -58,6 +86,12 @@ export default function SourcePanel({ notebookId }: { notebookId: string }) {
     setContent("");
     setUrl("");
     setSubmitError("");
+  }
+
+  function handleCloseModal() {
+    setIsModalOpen(false);
+    resetForm();
+    if (onModalClose) onModalClose();
   }
 
   async function handleCreateSource(e: React.FormEvent) {
@@ -105,7 +139,10 @@ export default function SourcePanel({ notebookId }: { notebookId: string }) {
 
       resetForm();
       setIsModalOpen(false);
-      fetchSources();
+      if (onModalClose) onModalClose();
+
+      await fetchSources();
+      router.refresh(); // Refresh Server Components so notebook/[id]/page switches view
     } catch (err: any) {
       setSubmitError(err.message || "Failed to add source");
     } finally {
@@ -121,7 +158,8 @@ export default function SourcePanel({ notebookId }: { notebookId: string }) {
       setActionSourceId(id);
       const res = await fetch(`/api/sources?id=${id}`, { method: "DELETE" });
       if (res.ok) {
-        fetchSources();
+        await fetchSources();
+        router.refresh();
       }
     } catch (err) {
       console.error("Failed to delete source:", err);
@@ -140,7 +178,8 @@ export default function SourcePanel({ notebookId }: { notebookId: string }) {
         body: JSON.stringify({ id }),
       });
       if (res.ok) {
-        fetchSources();
+        await fetchSources();
+        router.refresh();
       }
     } catch (err) {
       console.error("Failed to re-index source:", err);
@@ -276,7 +315,7 @@ export default function SourcePanel({ notebookId }: { notebookId: string }) {
               <h3 className="text-base font-serif-display font-normal text-[#141A22]">Add Knowledge Source</h3>
               <button
                 type="button"
-                onClick={() => setIsModalOpen(false)}
+                onClick={handleCloseModal}
                 className="text-neutral-400 hover:text-neutral-600 cursor-pointer"
               >
                 <X className="w-5 h-5" />
@@ -418,7 +457,7 @@ export default function SourcePanel({ notebookId }: { notebookId: string }) {
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={handleCloseModal}
                   className="px-4 py-2 text-xs font-medium text-neutral-600 hover:bg-neutral-100 rounded-lg cursor-pointer"
                 >
                   Cancel

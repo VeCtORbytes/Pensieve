@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { File, Link2, Video, FileText, Upload, Plus } from "lucide-react";
-import SourcePanel from "@/components/SourcePanel";
+import SourcePanel, { TabType } from "@/components/SourcePanel";
 
 export default function EmptyNotebook({ notebookId }: { notebookId: string }) {
-  const [isAddingSource, setIsAddingSource] = useState(false);
+  const [activeModalTab, setActiveModalTab] = useState<TabType | null>(null);
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-12 bg-[#F5F7F8] min-h-[calc(100vh-60px)]">
@@ -22,35 +22,35 @@ export default function EmptyNotebook({ notebookId }: { notebookId: string }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-4 text-left">
           {[
             {
-              type: "PDF",
+              type: "pdf" as TabType,
               title: "PDF Document",
               desc: "Upload research papers, slides, or books with page citations.",
               icon: File,
               color: "text-red-600 bg-red-50 border-red-200",
             },
             {
-              type: "WEBSITE",
+              type: "website" as TabType,
               title: "Website URL",
               desc: "Scrape article text cleanly stripped of ads and navigation.",
               icon: Link2,
               color: "text-blue-600 bg-blue-50 border-blue-200",
             },
             {
-              type: "YOUTUBE",
+              type: "youtube" as TabType,
               title: "YouTube Video",
               desc: "Ingest video captions with timestamp locators for seeking.",
               icon: Video,
               color: "text-red-600 bg-red-50 border-red-200",
             },
             {
-              type: "TEXT",
+              type: "text" as TabType,
               title: "Raw Text",
               desc: "Paste notes, transcripts, or unformatted text blocks.",
               icon: FileText,
               color: "text-neutral-700 bg-neutral-100 border-neutral-200",
             },
             {
-              type: "TRANSCRIPT",
+              type: "vtt" as TabType,
               title: "VTT Subtitle File",
               desc: "Upload timestamped VTT caption files for precise video locators.",
               icon: Upload,
@@ -62,7 +62,7 @@ export default function EmptyNotebook({ notebookId }: { notebookId: string }) {
               <button
                 key={item.type}
                 type="button"
-                onClick={() => setIsAddingSource(true)}
+                onClick={() => setActiveModalTab(item.type)}
                 className="p-4 rounded-xl bg-white border border-[#E2E7EA] hover:border-[#3B4CC0] shadow-xs hover:shadow-md transition duration-200 text-left space-y-2 group cursor-pointer flex flex-col justify-between"
               >
                 <div className="flex items-center justify-between">
@@ -84,11 +84,10 @@ export default function EmptyNotebook({ notebookId }: { notebookId: string }) {
           })}
         </div>
 
-        {/* Hidden SourcePanel used for triggering Add Source modal dialog */}
         <div className="pt-4 flex justify-center">
           <button
             type="button"
-            onClick={() => setIsAddingSource(true)}
+            onClick={() => setActiveModalTab("text")}
             className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#141A22] text-white text-xs font-semibold rounded-xl hover:bg-[#3B4CC0] shadow-sm transition cursor-pointer"
           >
             <Plus className="w-4 h-4" />
@@ -96,10 +95,15 @@ export default function EmptyNotebook({ notebookId }: { notebookId: string }) {
           </button>
         </div>
 
-        {/* Embedded SourcePanel for Modal standard behavior */}
-        <div className="hidden">
-          <SourcePanel notebookId={notebookId} />
-        </div>
+        {/* Render SourcePanel modal when user selects a source card */}
+        {activeModalTab && (
+          <SourcePanel
+            notebookId={notebookId}
+            initialOpenModal={true}
+            initialTab={activeModalTab}
+            onModalClose={() => setActiveModalTab(null)}
+          />
+        )}
       </div>
     </div>
   );
