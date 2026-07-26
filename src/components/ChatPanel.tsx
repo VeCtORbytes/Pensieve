@@ -12,6 +12,7 @@ import {
   FileText,
   MessageSquare,
 } from "lucide-react";
+import { useAuth, SignInButton } from "@clerk/nextjs";
 import { CitationPayload, RetrievalTracePayload } from "@/app/api/chat/route";
 import SourceViewerModal from "@/components/SourceViewerModal";
 import RetrievalTrace from "@/components/RetrievalTrace";
@@ -49,6 +50,7 @@ export default function ChatPanel({
   /** Provided by the workspace to open the rail drawer below `md`. */
   onOpenSources?: () => void;
 }) {
+  const { isSignedIn } = useAuth();
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -482,25 +484,41 @@ export default function ChatPanel({
 
       {/* Input Form */}
       <div className="p-4 border-t border-neutral-200 bg-white">
-        <form onSubmit={handleFormSubmit} className="relative flex items-center">
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask Pensieve a question about your notebook sources..."
-            className="w-full pl-4 pr-12 py-3 text-xs bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:ring-2 focus:ring-neutral-900 focus:bg-white transition"
-          />
-          <button
-            type="submit"
-            disabled={isLoading || !input.trim()}
-            className="absolute right-2 p-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 disabled:opacity-40 transition cursor-pointer"
-          >
-            {isLoading ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <Send className="w-3.5 h-3.5" />
-            )}
-          </button>
-        </form>
+        {!isSignedIn ? (
+          <div className="flex items-center justify-between gap-3 p-3 bg-[#141A22]/5 border border-[#E2E7EA] rounded-xl text-xs">
+            <span className="text-[#141A22] font-medium">
+              Sign in to ask questions and chat with this memory vessel.
+            </span>
+            <SignInButton mode="modal">
+              <button
+                type="button"
+                className="px-3.5 py-1.5 bg-[#141A22] hover:bg-[#3B4CC0] text-white font-semibold rounded-lg shadow-2xs transition cursor-pointer text-xs shrink-0"
+              >
+                Sign In to Chat
+              </button>
+            </SignInButton>
+          </div>
+        ) : (
+          <form onSubmit={handleFormSubmit} className="relative flex items-center">
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask Pensieve a question about your notebook sources..."
+              className="w-full pl-4 pr-12 py-3 text-xs bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:ring-2 focus:ring-neutral-900 focus:bg-white transition"
+            />
+            <button
+              type="submit"
+              disabled={isLoading || !input.trim()}
+              className="absolute right-2 p-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 disabled:opacity-40 transition cursor-pointer"
+            >
+              {isLoading ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Send className="w-3.5 h-3.5" />
+              )}
+            </button>
+          </form>
+        )}
       </div>
 
       {/* Citation Detail Modal. Hidden while the full source viewer is open so

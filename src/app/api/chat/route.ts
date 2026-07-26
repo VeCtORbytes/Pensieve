@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { qdrant, NOTEBOOK_COLLECTION_NAME, ensureCollection } from "@/lib/qdrant";
 import { generateEmbeddings } from "@/lib/embeddings";
@@ -42,7 +43,7 @@ export interface CitationPayload {
   chunkIndex: number;
   text: string;
   score: number;
-  locator?: Locator;
+  locator?: Locator | null;
   humanLocator?: string;
   /** Variant the quoted text is rendered in, so the viewer opens to match. */
   variant?: VariantKind;
@@ -51,6 +52,11 @@ export interface CitationPayload {
 }
 
 export async function GET(req: NextRequest) {
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(req.url);
   const notebookId = searchParams.get("notebookId");
 
@@ -68,6 +74,11 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: "Authentication required to chat" }, { status: 401 });
+    }
+
     const { messages, notebookId, variant } = await req.json();
 
     if (!notebookId || !Array.isArray(messages) || messages.length === 0) {
