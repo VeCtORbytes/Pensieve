@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { CitationPayload } from "@/app/api/chat/route";
 
+import SourceViewerModal from "@/components/SourceViewerModal";
+
 interface MessageItem {
   id: string;
   role: "user" | "assistant";
@@ -36,8 +38,36 @@ export default function ChatPanel({ notebookId }: { notebookId: string }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [selectedCitation, setSelectedCitation] = useState<CitationPayload | null>(null);
+  const [targetViewerSource, setTargetViewerSource] = useState<any | null>(null);
+  const [isLoadingSourceModal, setIsLoadingSourceModal] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  async function handleOpenSourceFromCitation(citation: CitationPayload) {
+    try {
+      setIsLoadingSourceModal(true);
+      const res = await fetch(`/api/sources?notebookId=${notebookId}`);
+      if (res.ok) {
+        const sources = await res.json();
+        const found = sources.find((s: any) => s.id === citation.sourceId);
+        if (found) {
+          setTargetViewerSource(found);
+        } else {
+          // Fallback object with title & raw text from citation
+          setTargetViewerSource({
+            id: citation.sourceId,
+            title: citation.title,
+            type: "TEXT",
+            rawText: citation.text,
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch source details:", err);
+    } finally {
+      setIsLoadingSourceModal(false);
+    }
+  }
 
   // Load chat history from PostgreSQL
   useEffect(() => {
@@ -359,7 +389,21 @@ export default function ChatPanel({ notebookId }: { notebookId: string }) {
               </div>
             </div>
 
-            <div className="flex justify-end pt-2">
+            <div className="flex justify-between items-center pt-2 border-t border-neutral-100">
+              <button
+                type="button"
+                disabled={isLoadingSourceModal}
+                onClick={() => handleOpenSourceFromCitation(selectedCitation)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-neutral-800 bg-neutral-100 hover:bg-neutral-200 rounded-lg transition cursor-pointer disabled:opacity-50"
+              >
+                {isLoadingSourceModal ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <BookOpen className="w-3.5 h-3.5" />
+                )}
+                Jump to Source Document
+              </button>
+
               <button
                 type="button"
                 onClick={() => setSelectedCitation(null)}
@@ -370,6 +414,22 @@ export default function ChatPanel({ notebookId }: { notebookId: string }) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Source Viewer Modal Target from Citation */}
+      {targetViewerSource && (
+        <SourceViewerModal
+          source={{
+            id: targetViewerSource.id,
+            title: targetViewerSource.title,
+            type: targetViewerSource.type,
+            url: targetViewerSource.url,
+            rawText: targetViewerSource.rawText,
+            createdAt: targetViewerSource.createdAt,
+          }}
+          highlightText={selectedCitation?.text || null}
+          onClose={() => setTargetViewerSource(null)}
+        />
       )}
     </div>
   );

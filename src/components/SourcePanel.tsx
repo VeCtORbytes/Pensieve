@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Plus, FileText, Upload, Link2, Video, File, Loader2, X } from "lucide-react";
+import { Plus, FileText, Upload, Link2, Video, File, Loader2, X, Eye } from "lucide-react";
+import SourceViewerModal from "@/components/SourceViewerModal";
 
 interface Source {
   id: string;
@@ -9,6 +10,7 @@ interface Source {
   type: string;
   title: string;
   url?: string | null;
+  rawText?: string | null;
   status: "QUEUED" | "EXTRACTING" | "EMBEDDING" | "READY" | "FAILED";
   error?: string | null;
   chunkCount: number;
@@ -20,6 +22,7 @@ type TabType = "text" | "vtt" | "pdf" | "website" | "youtube";
 export default function SourcePanel({ notebookId }: { notebookId: string }) {
   const [sources, setSources] = useState<Source[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedViewerSource, setSelectedViewerSource] = useState<Source | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>("text");
 
   // Form states
@@ -170,10 +173,11 @@ export default function SourcePanel({ notebookId }: { notebookId: string }) {
           sources.map((s) => (
             <div
               key={s.id}
-              className="p-3 rounded-lg border border-neutral-200 bg-white shadow-sm space-y-1.5"
+              onClick={() => setSelectedViewerSource(s)}
+              className="p-3 rounded-xl border border-neutral-200/90 bg-white hover:bg-neutral-50 shadow-2xs hover:border-neutral-300 transition cursor-pointer space-y-1.5 group"
             >
               <div className="flex items-start justify-between gap-2">
-                <span className="font-medium text-sm text-neutral-800 truncate flex-1">
+                <span className="font-medium text-xs text-neutral-800 group-hover:text-neutral-900 truncate flex-1 flex items-center gap-1.5">
                   {s.title}
                 </span>
                 <StatusBadge status={s.status} />
@@ -183,9 +187,10 @@ export default function SourcePanel({ notebookId }: { notebookId: string }) {
                 <span className="uppercase text-[10px] font-semibold tracking-wide text-neutral-500 bg-neutral-100 px-1.5 py-0.5 rounded">
                   {s.type}
                 </span>
-                <span>
-                  {s.status === "READY" ? `${s.chunkCount} chunks` : s.status}
-                </span>
+                <div className="flex items-center gap-1 text-[11px] text-neutral-400 group-hover:text-neutral-700 transition font-medium">
+                  <Eye className="w-3 h-3 text-neutral-400" />
+                  <span>{s.status === "READY" ? `${s.chunkCount} chunks` : s.status}</span>
+                </div>
               </div>
 
               {s.error && (
@@ -197,6 +202,21 @@ export default function SourcePanel({ notebookId }: { notebookId: string }) {
           ))
         )}
       </div>
+
+      {/* Source Viewer Modal */}
+      {selectedViewerSource && (
+        <SourceViewerModal
+          source={{
+            id: selectedViewerSource.id,
+            title: selectedViewerSource.title,
+            type: selectedViewerSource.type,
+            url: selectedViewerSource.url,
+            rawText: selectedViewerSource.rawText,
+            createdAt: selectedViewerSource.createdAt,
+          }}
+          onClose={() => setSelectedViewerSource(null)}
+        />
+      )}
 
       {/* Modal Dialog */}
       {isModalOpen && (
