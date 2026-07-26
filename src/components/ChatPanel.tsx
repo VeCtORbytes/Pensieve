@@ -14,7 +14,6 @@ import {
   Languages,
   PanelLeft,
   Download,
-  Trash2,
 } from "lucide-react";
 import { useAuth, SignInButton } from "@clerk/nextjs";
 import { CitationPayload, RetrievalTracePayload } from "@/app/api/chat/route";
@@ -24,6 +23,12 @@ import { VariantKind } from "@/lib/locator";
 import { useReadingVariant } from "@/hooks/useReadingVariant";
 
 type LanguageOption = { kind: VariantKind; label: string };
+
+const languageOptions: LanguageOption[] = [
+  { kind: "ORIGINAL", label: "Original" },
+  { kind: "ENGLISH", label: "English" },
+  { kind: "ROMANIZED", label: "Romanized" },
+];
 
 interface MessageItem {
   id: string;
@@ -36,9 +41,10 @@ interface MessageItem {
 interface DBMessage {
   id: string;
   notebookId: string;
-  role: "user" | "assistant" | "system";
+  role: string;
   content: string;
-  citations?: CitationPayload[] | null;
+  citations?: any;
+  trace?: any;
   createdAt: string;
 }
 
@@ -48,95 +54,35 @@ export default function ChatPanel({
   onOpenSources,
 }: {
   notebookId: string;
-  /** Shown on the mobile sources trigger. */
   sourceCount?: number;
-  /** Provided by the workspace to open the rail drawer below `md`. */
   onOpenSources?: () => void;
 }) {
   const { isSignedIn } = useAuth();
-  const [messages, setMessages] = useState<MessageItem[]>([]);
   const [input, setInput] = useState("");
+  const [messages, setMessages] = useState<MessageItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
-  const [selectedCitation, setSelectedCitation] = useState<CitationPayload | null>(null);
-  const [targetViewerSource, setTargetViewerSource] = useState<any | null>(null);
-  const [isLoadingSourceModal, setIsLoadingSourceModal] = useState(false);
-
-  // Reading language, shared with the source viewer. Answers come back in it.
-  // Until the reader picks one, the server infers it from the question.
-  const { variant, isExplicit, select: selectVariant, reset: resetVariant } =
-    useReadingVariant(notebookId);
-  const [languageOptions, setLanguageOptions] = useState<LanguageOption[]>([]);
-
+  const [selectedViewerSource, setSelectedViewerSource] = useState<any | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Only offer a language switcher when the notebook actually has a non-English
-  // source to switch between.
+  const { variant, isExplicit, select, reset } = useReadingVariant(notebookId);
+
+  // Fetch past messages on mount
   useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const res = await fetch(`/api/notebooks/${notebookId}/languages`);
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!cancelled && Array.isArray(data?.options) && data.options.length > 1) {
-          setLanguageOptions(data.options);
-        }
-      } catch {
-        /* switcher stays hidden */
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [notebookId]);
-
-  function handleCitationClick(citation: CitationPayload) {
-    setSelectedCitation(citation);
-
-    // Set target viewer source IMMEDIATELY so modal opens at 0ms latency
-    setTargetViewerSource({
-      id: citation.sourceId,
-      title: citation.title,
-      type: citation.locator?.page ? "PDF" : citation.locator?.startSec !== undefined ? "YOUTUBE" : "TEXT",
-      rawText: citation.text,
-      blobUrl: null,
-      url: citation.locator?.startSec !== undefined ? `https://www.youtube.com/watch?v=preview` : undefined,
-    });
-
-    // Enrich full source details in background without blocking modal launch
-    fetch(`/api/sources?notebookId=${notebookId}`)
-      .then((res) => (res.ok ? res.json() : []))
-      .then((sources) => {
-        const found = sources.find((s: any) => s.id === citation.sourceId);
-        if (found) {
-          setTargetViewerSource(found);
-        }
-      })
-      .catch((err) => console.error("Background source fetch error:", err));
-  }
-
-  // Load chat history from PostgreSQL
-  useEffect(() => {
-    async function loadHistory() {
+    async function fetchHistory() {
       try {
         setIsLoadingHistory(true);
         const res = await fetch(`/api/chat?notebookId=${notebookId}`);
         if (res.ok) {
-          const dbMsgs: DBMessage[] = await res.json();
-          if (dbMsgs.length > 0) {
-            const formatted: MessageItem[] = dbMsgs
-              .filter((m) => m.role === "user" || m.role === "assistant")
-              .map((m) => ({
-                id: m.id,
-                role: m.role as "user" | "assistant",
-                content: m.content,
-                citations: m.citations || null,
-              }));
-            setMessages(formatted);
-          }
+          const data: DBMessage[] = await res.json();
+          const mapped: MessageItem[] = data.map((m) => ({
+            id: m.id,
+            role: m.role as "user" | "assistant",
+            content: m.content,
+            citations: m.citations ? (m.citations as CitationPayload[]) : null,
+            trace: m.trace ? (m.trace as RetrievalTracePayload) : null,
+          }));
+          setMessages(mapped);
         }
       } catch (err) {
         console.error("Failed to load chat history:", err);
@@ -144,134 +90,134 @@ export default function ChatPanel({
         setIsLoadingHistory(false);
       }
     }
-    loadHistory();
+
+    fetchHistory();
   }, [notebookId]);
 
-  // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
-  async function handleSend(promptText?: string) {
-    const textToSend = promptText || input;
+  async function handleSend(customText?: string) {
+    const textToSend = customText || input;
     if (!textToSend.trim() || isLoading) return;
 
-    const userMsgId = `user-${Date.now()}`;
-    const userMsg: MessageItem = {
-      id: userMsgId,
+    const userMessage: MessageItem = {
+      id: Date.now().toString(),
       role: "user",
       content: textToSend.trim(),
     };
 
-    const newMessages = [...messages, userMsg];
+    const newMessages = [...messages, userMessage];
     setMessages(newMessages);
-    setInput("");
+    if (!customText) setInput("");
     setIsLoading(true);
 
-    const assistantMsgId = `assistant-${Date.now()}`;
-    let citations: CitationPayload[] | null = null;
-    let trace: RetrievalTracePayload | null = null;
+    const assistantMsgId = (Date.now() + 1).toString();
+    const placeholderAssistant: MessageItem = {
+      id: assistantMsgId,
+      role: "assistant",
+      content: "",
+      citations: [],
+      trace: null,
+    };
+
+    setMessages([...newMessages, placeholderAssistant]);
 
     try {
+      const bodyPayload: any = {
+        notebookId,
+        messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
+      };
+      if (isExplicit && variant) {
+        bodyPayload.variant = variant;
+      }
+
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          notebookId,
-          // Omitted unless the reader chose a language, so the server can match
-          // the question's language instead.
-          variant: isExplicit ? variant : undefined,
-          messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
-        }),
+        body: JSON.stringify(bodyPayload),
       });
 
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.error || "Failed to generate response");
+        throw new Error(errorData.error || "Failed to reach Pensieve API");
       }
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: assistantMsgId,
-          role: "assistant",
-          content: "",
-          citations: null,
-          trace: null,
-        },
-      ]);
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
 
-      if (res.body) {
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-        let accumulatedText = "";
+      if (!reader) throw new Error("No reader stream available");
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+      let accumulatedContent = "";
+      let parsedCitations: CitationPayload[] = [];
+      let parsedTrace: RetrievalTracePayload | null = null;
+      let buffer = "";
 
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() || "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-          for (const line of lines) {
-            if (!line.trim()) continue;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
 
-            if (line.startsWith("2:")) {
-              try {
-                const dataArray = JSON.parse(line.slice(2));
-                if (Array.isArray(dataArray)) {
-                  for (const item of dataArray) {
-                    if (item.type === "trace") trace = item.data;
-                    if (item.type === "citations") citations = item.data;
-                  }
-                }
-              } catch (e) {
-                console.warn("Failed to parse stream data line:", line, e);
-              }
-            } else if (line.startsWith('0:"')) {
-              try {
-                const textChunk = JSON.parse(line.slice(2));
-                accumulatedText += textChunk;
-              } catch (e) {
-                accumulatedText += line.slice(2);
-              }
-            } else {
-              accumulatedText += line;
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+
+          if (trimmed.startsWith("CITATIONS:")) {
+            try {
+              const jsonStr = trimmed.substring("CITATIONS:".length);
+              parsedCitations = JSON.parse(jsonStr);
+            } catch (e) {
+              console.error("Failed parsing citations SSE:", e);
             }
-
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === assistantMsgId
-                  ? { ...msg, content: accumulatedText, citations, trace }
-                  : msg
-              )
-            );
+          } else if (trimmed.startsWith("TRACE:")) {
+            try {
+              const jsonStr = trimmed.substring("TRACE:".length);
+              parsedTrace = JSON.parse(jsonStr);
+            } catch (e) {
+              console.error("Failed parsing trace SSE:", e);
+            }
+          } else if (trimmed.startsWith("0:")) {
+            try {
+              const textChunk = JSON.parse(trimmed.substring(2));
+              accumulatedContent += textChunk;
+            } catch (e) {
+              accumulatedContent += trimmed.substring(2);
+            }
+          } else {
+            accumulatedContent += trimmed;
           }
-        }
 
-        if (buffer.trim()) {
-          accumulatedText += buffer;
           setMessages((prev) =>
             prev.map((msg) =>
               msg.id === assistantMsgId
-                ? { ...msg, content: accumulatedText, citations, trace }
+                ? {
+                    ...msg,
+                    content: accumulatedContent,
+                    citations: parsedCitations,
+                    trace: parsedTrace,
+                  }
                 : msg
             )
           );
         }
       }
     } catch (err: any) {
-      console.error("Error sending message:", err);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `error-${Date.now()}`,
-          role: "assistant",
-          content: `⚠️ Error: ${err.message || "Failed to respond."}`,
-        },
-      ]);
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === assistantMsgId
+            ? {
+                ...msg,
+                content: `Sorry, I encountered an error answering your prompt: ${
+                  err.message || "Unknown error"
+                }`,
+              }
+            : msg
+        )
+      );
     } finally {
       setIsLoading(false);
     }
@@ -307,92 +253,98 @@ export default function ChatPanel({
     document.body.removeChild(a);
   }
 
+  function handleCitationClick(citation: CitationPayload) {
+    setSelectedViewerSource({
+      id: citation.sourceId,
+      title: citation.title,
+      type: "TEXT",
+      url: null,
+      rawText: citation.text,
+      createdAt: new Date().toISOString(),
+    });
+  }
+
   return (
-    <div className="flex flex-col h-full bg-[#090D14] text-[#E6EDF3] relative overflow-hidden">
+    <div className="flex flex-col h-full bg-white text-[#141A22] relative overflow-hidden">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#222B3D] bg-[#090D14]/90 px-4 py-3 md:px-6 md:py-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E2E7EA] bg-white px-4 py-3 md:px-6 md:py-4">
         <div className="flex min-w-0 items-center gap-2.5">
           {onOpenSources && (
             <button
               type="button"
               onClick={onOpenSources}
               aria-label={`Show sources${sourceCount ? ` (${sourceCount})` : ""}`}
-              className="flex shrink-0 items-center gap-1 rounded-xl border border-[#222B3D] px-2.5 py-1.5 text-[11px] font-medium text-[#8B949E] transition hover:bg-[#111622] hover:text-[#E6EDF3] md:hidden"
+              className="flex shrink-0 items-center gap-1 rounded-xl border border-[#E2E7EA] px-2.5 py-1.5 text-[11px] font-medium text-neutral-600 transition hover:bg-[#F5F7F8] md:hidden"
             >
               <PanelLeft className="h-3.5 w-3.5" />
               {sourceCount ?? ""}
             </button>
           )}
 
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#8B5CF6]/10 border border-[#8B5CF6]/30 text-[#8B5CF6] shadow-xs">
-            <Sparkles className="h-4 w-4 animate-pulse" />
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#3B4CC0] text-white shadow-xs">
+            <Sparkles className="h-4 w-4" />
           </div>
           <div className="min-w-0">
-            <h2 className="truncate text-sm font-semibold text-[#E6EDF3]">
+            <h2 className="truncate text-sm font-semibold text-[#141A22]">
               Pensieve AI Assistant
             </h2>
-            <p className="hidden text-[11px] text-[#8B949E] sm:block">
+            <p className="hidden text-[11px] text-neutral-400 sm:block">
               Answers grounded only in your sources
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Chat Export & Clear Action Controls */}
+          {/* Chat Export Control */}
           {messages.length > 0 && (
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={handleExportChatMarkdown}
-                title="Export Research Thread as Markdown"
-                className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold bg-[#111622] hover:bg-[#192030] border border-[#222B3D] text-[#38BDF8] rounded-xl transition cursor-pointer"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Export Thread</span>
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={handleExportChatMarkdown}
+              title="Export Research Thread as Markdown"
+              className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold bg-[#F5F7F8] hover:bg-neutral-100 border border-[#E2E7EA] text-[#3B4CC0] rounded-xl transition cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Export Thread</span>
+            </button>
           )}
 
-          {languageOptions.length > 1 && (
-            <div className="flex min-w-0 items-center gap-1.5">
-              <Languages className="hidden h-3.5 w-3.5 shrink-0 text-[#8B949E] sm:block" />
-              <div className="flex max-w-full overflow-x-auto rounded-xl bg-[#111622] border border-[#222B3D] p-0.5 text-[11px] font-medium">
-                {/* Auto follows the language of each question. */}
-                <button
-                  type="button"
-                  onClick={resetVariant}
-                  title="Answer in whatever language the question is asked in"
-                  aria-pressed={!isExplicit}
-                  className={`shrink-0 rounded-lg px-2.5 py-1 transition ${
-                    !isExplicit
-                      ? "bg-[#8B5CF6] text-white font-semibold shadow-xs"
-                      : "text-[#8B949E] hover:text-[#E6EDF3]"
-                  }`}
-                >
-                  Auto
-                </button>
-                {languageOptions.map((option) => {
-                  const active = isExplicit && option.kind === variant;
-                  return (
-                    <button
-                      key={option.kind}
-                      type="button"
-                      onClick={() => selectVariant(option.kind)}
-                      title={`Read sources and get answers in ${option.label}`}
-                      aria-pressed={active}
-                      className={`shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1 transition ${
-                        active
-                          ? "bg-[#8B5CF6] text-white font-semibold shadow-xs"
-                          : "text-[#8B949E] hover:text-[#E6EDF3]"
-                      }`}
-                    >
-                      {option.label}
-                    </button>
-                  );
-                })}
-              </div>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <Languages className="hidden h-3.5 w-3.5 shrink-0 text-neutral-400 sm:block" />
+            <div className="flex max-w-full overflow-x-auto rounded-xl bg-[#F5F7F8] border border-[#E2E7EA] p-0.5 text-[11px] font-medium">
+              <button
+                type="button"
+                onClick={reset}
+                title="Answer in whatever language the question is asked in"
+                aria-pressed={!isExplicit}
+                className={`shrink-0 rounded-lg px-2.5 py-1 transition ${
+                  !isExplicit
+                    ? "bg-white text-[#141A22] font-semibold shadow-xs"
+                    : "text-neutral-500 hover:text-[#141A22]"
+                }`}
+              >
+                Auto
+              </button>
+              {languageOptions.map((option: LanguageOption) => {
+                const active = isExplicit && option.kind === variant;
+                return (
+                  <button
+                    key={option.kind}
+                    type="button"
+                    onClick={() => select(option.kind)}
+                    title={`Read sources and get answers in ${option.label}`}
+                    aria-pressed={active}
+                    className={`shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1 transition ${
+                      active
+                        ? "bg-white text-[#141A22] font-semibold shadow-xs"
+                        : "text-neutral-500 hover:text-[#141A22]"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
             </div>
-          )}
+          </div>
         </div>
       </div>
 
@@ -405,11 +357,11 @@ export default function ChatPanel({
           </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full max-w-md mx-auto text-center space-y-4 py-12">
-            <div className="w-12 h-12 rounded-2xl bg-neutral-100 flex items-center justify-center text-neutral-400">
-              <MessageSquare className="w-6 h-6" />
+            <div className="w-12 h-12 rounded-2xl bg-[#F5F7F8] border border-[#E2E7EA] flex items-center justify-center text-neutral-400">
+              <MessageSquare className="w-6 h-6 text-[#3B4CC0]" />
             </div>
             <div>
-              <h3 className="text-base font-semibold text-neutral-800">Start a Conversation</h3>
+              <h3 className="text-base font-semibold text-[#141A22]">Start a Conversation</h3>
               <p className="text-xs text-neutral-400 mt-1">
                 Ask questions about your uploaded documents, websites, PDFs, or YouTube videos.
               </p>
@@ -428,10 +380,10 @@ export default function ChatPanel({
                   key={i}
                   type="button"
                   onClick={() => handleSend(promptText)}
-                  className="w-full text-left p-3 text-xs text-neutral-700 bg-neutral-50 hover:bg-neutral-100 rounded-xl border border-neutral-200/80 transition flex items-center justify-between group cursor-pointer"
+                  className="w-full text-left p-3 text-xs text-[#141A22] bg-[#F5F7F8] hover:bg-neutral-100 rounded-xl border border-[#E2E7EA] transition flex items-center justify-between group cursor-pointer"
                 >
                   <span>{promptText}</span>
-                  <Sparkles className="w-3.5 h-3.5 text-neutral-400 group-hover:text-neutral-900 transition" />
+                  <Sparkles className="w-3.5 h-3.5 text-neutral-400 group-hover:text-[#3B4CC0] transition" />
                 </button>
               ))}
             </div>
@@ -450,28 +402,25 @@ export default function ChatPanel({
                 {/* Avatar */}
                 <div
                   className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-semibold ${
-                    isUser ? "bg-ink text-white" : "bg-accent text-white shadow-xs"
+                    isUser
+                      ? "bg-[#141A22] text-white shadow-xs"
+                      : "bg-[#3B4CC0] text-white shadow-xs"
                   }`}
                 >
                   {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
                 </div>
 
-                {/* min-w-0 lets the bubble shrink and wrap on narrow screens;
-                    max-w keeps it sized to its content instead of stretching. */}
-                <div
-                  className={`min-w-0 max-w-[85%] space-y-3 ${isUser ? "items-end" : ""}`}
-                >
-                  {/* Retrieval Trace Component above assistant answer */}
+                <div className={`min-w-0 max-w-[85%] space-y-3 ${isUser ? "items-end" : ""}`}>
                   {!isUser && m.trace && (
                     <RetrievalTrace trace={m.trace} isStreaming={isLoading && !m.content} />
                   )}
 
                   {m.content && (
                     <div
-                      className={`overflow-hidden break-words rounded-2xl p-3.5 text-xs leading-relaxed md:p-4 ${
+                      className={`overflow-hidden break-words rounded-2xl p-3.5 text-xs leading-relaxed md:p-4 shadow-2xs ${
                         isUser
-                          ? "rounded-tr-none bg-ink text-white"
-                          : "rounded-tl-none border border-neutral-200/60 bg-neutral-100/80 text-neutral-800"
+                          ? "rounded-tr-none bg-[#141A22] text-white font-medium"
+                          : "rounded-tl-none border border-[#E2E7EA] bg-[#F5F7F8] text-[#141A22]"
                       }`}
                     >
                       {isUser ? (
@@ -482,11 +431,11 @@ export default function ChatPanel({
                     </div>
                   )}
 
-                  {/* Citation Chips under Assistant Answer: filename.pdf · p.4 */}
+                  {/* Citation Chips under Assistant Answer */}
                   {!isUser && m.citations && m.citations.length > 0 && (
                     <div className="pt-1 space-y-1.5">
-                      <div className="flex items-center gap-1 text-[11px] font-semibold text-neutral-400">
-                        <BookOpen className="w-3 h-3 text-neutral-500" />
+                      <div className="flex items-center gap-1 text-[11px] font-semibold text-neutral-500">
+                        <BookOpen className="w-3 h-3 text-[#1D9E75]" />
                         <span>Citations ({m.citations.length})</span>
                       </div>
 
@@ -496,14 +445,14 @@ export default function ChatPanel({
                             key={c.number}
                             type="button"
                             onClick={() => handleCitationClick(c)}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium bg-white hover:bg-neutral-50 border border-neutral-200 rounded-lg shadow-xs text-neutral-700 hover:border-neutral-400 transition cursor-pointer"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium bg-white hover:bg-neutral-50 border border-[#E2E7EA] rounded-xl shadow-2xs text-[#141A22] hover:border-[#3B4CC0] transition cursor-pointer"
                           >
-                            <span className="font-semibold text-emerald-700 bg-emerald-50 px-1 rounded">
+                            <span className="font-semibold text-[#1D9E75] bg-[#1D9E75]/10 px-1 rounded border border-[#1D9E75]/20">
                               [{c.number}]
                             </span>
                             <span className="max-w-[130px] truncate">{c.title}</span>
                             {c.humanLocator && (
-                              <span className="text-[10px] font-mono text-neutral-500">
+                              <span className="text-[10px] font-mono text-neutral-400">
                                 · {c.humanLocator}
                               </span>
                             )}
@@ -519,8 +468,8 @@ export default function ChatPanel({
         )}
 
         {isLoading && (
-          <div className="flex items-center gap-2 text-xs text-neutral-400 italic">
-            <Loader2 className="w-3.5 h-3.5 animate-spin text-neutral-500" />
+          <div className="flex items-center gap-2 text-xs text-neutral-500 italic">
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-[#3B4CC0]" />
             <span>Pensieve is retrieving sources & streaming response...</span>
           </div>
         )}
@@ -528,16 +477,16 @@ export default function ChatPanel({
       </div>
 
       {/* Input Form */}
-      <div className="p-4 border-t border-neutral-200 bg-white">
+      <div className="p-4 border-t border-[#E2E7EA] bg-white">
         {!isSignedIn ? (
-          <div className="flex items-center justify-between gap-3 p-3 bg-[#141A22]/5 border border-[#E2E7EA] rounded-xl text-xs">
+          <div className="flex items-center justify-between gap-3 p-3 bg-[#F5F7F8] border border-[#E2E7EA] rounded-2xl text-xs">
             <span className="text-[#141A22] font-medium">
               Sign in to ask questions and chat with this memory vessel.
             </span>
             <SignInButton mode="modal">
               <button
                 type="button"
-                className="px-3.5 py-1.5 bg-[#141A22] hover:bg-[#3B4CC0] text-white font-semibold rounded-lg shadow-2xs transition cursor-pointer text-xs shrink-0"
+                className="px-4 py-2 bg-[#141A22] hover:bg-[#3B4CC0] text-white font-semibold rounded-xl shadow-sm transition cursor-pointer text-xs shrink-0"
               >
                 Sign In to Chat
               </button>
@@ -549,12 +498,12 @@ export default function ChatPanel({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask Pensieve a question about your notebook sources..."
-              className="w-full pl-4 pr-12 py-3 text-xs bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:ring-2 focus:ring-neutral-900 focus:bg-white transition"
+              className="w-full pl-4 pr-12 py-3 text-xs bg-[#F5F7F8] border border-[#E2E7EA] rounded-2xl outline-none focus:ring-2 focus:ring-[#3B4CC0] focus:bg-white text-[#141A22] placeholder:text-neutral-400 transition"
             />
             <button
               type="submit"
               disabled={isLoading || !input.trim()}
-              className="absolute right-2 p-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 disabled:opacity-40 transition cursor-pointer"
+              className="absolute right-2 p-2.5 bg-[#141A22] text-white rounded-xl hover:bg-[#3B4CC0] disabled:opacity-40 transition cursor-pointer shadow-sm"
             >
               {isLoading ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -566,140 +515,69 @@ export default function ChatPanel({
         )}
       </div>
 
-      {/* Citation Detail Modal. Hidden while the full source viewer is open so
-          the two overlays never stack. */}
-      {/*
-        Citation clicks go straight to the full source viewer. This preview is
-        suppressed while the source is being fetched (otherwise it flashes for the
-        duration of the request) and once the viewer is open, so the two overlays
-        never stack. It remains as the graceful fallback when the source fails to
-        load, where its "Jump to Source Document" button retries.
-      */}
-      {selectedCitation && !targetViewerSource && !isLoadingSourceModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-xl max-w-lg w-full p-6 shadow-2xl space-y-4 border border-neutral-200">
-            <div className="flex items-start justify-between border-b border-neutral-100 pb-3">
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 text-xs font-bold bg-emerald-100 text-emerald-800 rounded">
-                  [{selectedCitation.number}]
-                </span>
-                <div>
-                  <h4 className="text-sm font-semibold text-neutral-900 truncate max-w-[300px]">
-                    {selectedCitation.title}
-                  </h4>
-                  <p className="text-[11px] text-neutral-400">
-                    Location: <span className="font-semibold text-neutral-700">{selectedCitation.humanLocator || "Exact Chunk"}</span> • Score: {selectedCitation.score}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedCitation(null)}
-                className="text-neutral-400 hover:text-neutral-600 p-1 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="space-y-2">
-              <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider flex items-center gap-1">
-                <FileText className="w-3 h-3" /> Cited Context Snippet
-              </p>
-              <div className="p-3 bg-neutral-50 rounded-lg border border-neutral-200/80 text-xs text-neutral-700 font-mono leading-relaxed max-h-60 overflow-y-auto whitespace-pre-wrap">
-                {selectedCitation.text}
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-neutral-100">
-              <button
-                type="button"
-                onClick={() => handleCitationClick(selectedCitation)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-neutral-800 bg-neutral-100 hover:bg-neutral-200 rounded-lg transition cursor-pointer"
-              >
-                {isLoadingSourceModal ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <BookOpen className="w-3.5 h-3.5" />
-                )}
-                Jump to Source Document
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setSelectedCitation(null)}
-                className="px-4 py-2 text-xs font-medium bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition cursor-pointer"
-              >
-                Close Preview
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Source Viewer Modal Target from Citation */}
-      {targetViewerSource && (
+      {/* Source Viewer Modal */}
+      {selectedViewerSource && (
         <SourceViewerModal
           source={{
-            id: targetViewerSource.id,
-            title: targetViewerSource.title,
-            type: targetViewerSource.type,
-            url: targetViewerSource.url,
-            blobUrl: targetViewerSource.blobUrl,
-            rawText: targetViewerSource.rawText,
-            createdAt: targetViewerSource.createdAt,
+            id: selectedViewerSource.id,
+            title: selectedViewerSource.title,
+            type: selectedViewerSource.type,
+            url: selectedViewerSource.url,
+            rawText: selectedViewerSource.rawText,
+            createdAt: selectedViewerSource.createdAt,
           }}
           notebookId={notebookId}
-          locator={selectedCitation?.locator || null}
-          locatorVariant={selectedCitation?.variant}
-          onClose={() => {
-            // Clear the citation too, or closing the viewer would re-reveal the
-            // preview the reader already dismissed by drilling in.
-            setTargetViewerSource(null);
-            setSelectedCitation(null);
-          }}
+          onClose={() => setSelectedViewerSource(null)}
         />
       )}
     </div>
   );
 }
 
-/**
- * Parses bracket citation markers like [1], [2] inside assistant prose text and renders them as clickable superscript buttons
- */
 function renderProseWithInlineCitations(
   content: string,
-  citations?: CitationPayload[] | null,
-  onCitationClick?: (citation: CitationPayload) => void
+  citations: CitationPayload[] | null | undefined,
+  onCitationClick: (c: CitationPayload) => void
 ) {
   if (!citations || citations.length === 0) {
     return <div className="whitespace-pre-wrap">{content}</div>;
   }
 
-  const parts = content.split(/(\[\d+\])/g);
+  const citationMap = new Map<number, CitationPayload>();
+  citations.forEach((c) => citationMap.set(c.number, c));
 
-  return (
-    <div className="whitespace-pre-wrap">
-      {parts.map((part, idx) => {
-        const match = part.match(/^\[(\d+)\]$/);
-        if (match) {
-          const num = parseInt(match[1]);
-          const foundCitation = citations.find((c) => c.number === num);
-          if (foundCitation) {
-            return (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => onCitationClick && onCitationClick(foundCitation)}
-                className="inline-flex items-center mx-0.5 px-1 py-0.5 text-[10px] font-mono font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 rounded border border-emerald-300 transition cursor-pointer align-super"
-                title={`Citation [${num}]: ${foundCitation.title}`}
-              >
-                [{num}]
-              </button>
-            );
-          }
-        }
-        return <span key={idx}>{part}</span>;
-      })}
-    </div>
-  );
+  const regex = /\[(\d+)\]/g;
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(content)) !== null) {
+    const num = parseInt(match[1], 10);
+    const beforeText = content.substring(lastIndex, match.index);
+    if (beforeText) parts.push(beforeText);
+
+    const cit = citationMap.get(num);
+    if (cit) {
+      parts.push(
+        <button
+          key={`${match.index}-${num}`}
+          type="button"
+          onClick={() => onCitationClick(cit)}
+          title={`${cit.title} (${cit.humanLocator || ""})`}
+          className="inline-flex items-center justify-center mx-0.5 px-1.5 py-0.2 text-[10px] font-bold text-[#1D9E75] bg-[#1D9E75]/10 hover:bg-[#1D9E75]/20 rounded border border-[#1D9E75]/30 transition cursor-pointer"
+        >
+          [{num}]
+        </button>
+      );
+    } else {
+      parts.push(match[0]);
+    }
+
+    lastIndex = regex.lastIndex;
+  }
+
+  const remainingText = content.substring(lastIndex);
+  if (remainingText) parts.push(remainingText);
+
+  return <div className="whitespace-pre-wrap leading-relaxed">{parts}</div>;
 }

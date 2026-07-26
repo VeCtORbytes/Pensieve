@@ -30,7 +30,7 @@ export default async function NotebookPage({
   const hasSources = notebook.sources.length > 0;
 
   return (
-    <div className="flex h-screen flex-col bg-[#090D14] text-[#E6EDF3]">
+    <div className="flex h-screen flex-col bg-[#F5F7F8] text-[#141A22]">
       <NotebookHeader id={notebook.id} title={notebook.title} />
 
       {!hasSources ? (

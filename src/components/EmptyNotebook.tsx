@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { File, Link2, Video, FileText, Upload, Plus, Sparkles, BookOpen } from "lucide-react";
+import { File, Link2, Video, FileText, Upload, Plus, Sparkles, BookOpen, Wand2 } from "lucide-react";
 import SourcePanel, { TabType } from "@/components/SourcePanel";
 
 export default function EmptyNotebook({ notebookId }: { notebookId: string }) {
@@ -33,7 +33,7 @@ export default function EmptyNotebook({ notebookId }: { notebookId: string }) {
   }
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-12 bg-[#F5F7F8] bg-mesh min-h-[calc(100vh-60px)]">
+    <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-12 bg-[#F5F7F8] bg-mesh min-h-[calc(100vh-60px)] text-[#141A22]">
       <div className="max-w-2xl w-full text-center space-y-8 glass-panel p-8 sm:p-10 rounded-3xl shadow-xl border border-[#E2E7EA]">
         <div className="space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-[#E2E7EA] shadow-2xs">
@@ -79,7 +79,7 @@ export default function EmptyNotebook({ notebookId }: { notebookId: string }) {
               title: "Raw Text",
               desc: "Paste notes, transcripts, or unformatted text blocks.",
               icon: FileText,
-              color: "text-neutral-700 bg-neutral-100 border-neutral-200 group-hover:border-neutral-400",
+              color: "text-[#141A22] bg-neutral-100 border-[#E2E7EA] group-hover:border-[#3B4CC0]",
             },
             {
               type: "vtt" as TabType,
@@ -121,7 +121,7 @@ export default function EmptyNotebook({ notebookId }: { notebookId: string }) {
           <button
             type="button"
             onClick={() => setActiveModalTab("text")}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-[#141A22] text-white text-xs font-semibold rounded-xl hover:bg-[#3B4CC0] shadow-md transition cursor-pointer"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-[#141A22] hover:bg-[#3B4CC0] text-white text-xs font-semibold rounded-xl shadow-md transition cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             Add First Source Now
@@ -133,7 +133,7 @@ export default function EmptyNotebook({ notebookId }: { notebookId: string }) {
             onClick={handleIngestSampleData}
             className="inline-flex items-center gap-2 px-5 py-3 bg-white text-[#141A22] text-xs font-semibold rounded-xl border border-[#E2E7EA] hover:border-[#3B4CC0] shadow-2xs transition cursor-pointer disabled:opacity-50"
           >
-            <BookOpen className="w-4 h-4 text-[#1D9E75]" />
+            <Wand2 className="w-4 h-4 text-[#1D9E75]" />
             {isIngestingSample ? "Ingesting Sample..." : "Try with Sample Note"}
           </button>
         </div>

@@ -60,23 +60,23 @@ export default function CommandPalette({
   ].filter((p) => p.toLowerCase().includes(query.toLowerCase()));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/70 backdrop-blur-md pt-20 p-4">
-      <div className="bg-[#111622] rounded-3xl max-w-xl w-full shadow-2xl overflow-hidden border border-[#222B3D] text-[#E6EDF3] animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 backdrop-blur-xs pt-20 p-4">
+      <div className="bg-white rounded-3xl max-w-xl w-full shadow-2xl overflow-hidden border border-[#E2E7EA] text-[#141A22] animate-in fade-in zoom-in-95 duration-150">
         {/* Search Bar */}
-        <div className="flex items-center px-4 py-1 border-b border-[#222B3D] bg-[#090D14]">
-          <Search className="w-4 h-4 text-[#8B949E] shrink-0" />
+        <div className="flex items-center px-4 py-1 border-b border-[#E2E7EA] bg-[#F5F7F8]">
+          <Search className="w-4 h-4 text-neutral-400 shrink-0" />
           <input
             autoFocus
             type="text"
             placeholder="Search sources or select starter prompt (ESC to close)..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full px-3 py-3.5 text-xs bg-transparent outline-none text-[#E6EDF3] placeholder-[#8B949E]/60 font-sans"
+            className="w-full px-3 py-3.5 text-xs bg-transparent outline-none text-[#141A22] placeholder-neutral-400 font-sans"
           />
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 text-[#8B949E] hover:text-[#E6EDF3] hover:bg-[#192030] rounded-xl transition cursor-pointer"
+            className="p-1.5 text-neutral-400 hover:text-[#141A22] hover:bg-white rounded-xl transition cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -87,8 +87,8 @@ export default function CommandPalette({
           {/* Sources Section */}
           {filteredSources.length > 0 && (
             <div className="space-y-1">
-              <div className="px-3 py-1 text-[10px] uppercase font-semibold text-[#8B949E] tracking-wider flex items-center gap-1">
-                <FileText className="w-3 h-3 text-[#38BDF8]" />
+              <div className="px-3 py-1 text-[10px] uppercase font-semibold text-neutral-400 tracking-wider flex items-center gap-1">
+                <FileText className="w-3 h-3 text-[#3B4CC0]" />
                 Sources ({filteredSources.length})
               </div>
               {filteredSources.map((s) => (
@@ -99,15 +99,15 @@ export default function CommandPalette({
                     if (onSelectSource) onSelectSource(s);
                     onClose();
                   }}
-                  className="w-full text-left p-3 rounded-2xl hover:bg-[#192030] border border-transparent hover:border-[#8B5CF6]/30 flex items-center justify-between text-xs transition cursor-pointer group"
+                  className="w-full text-left p-3 rounded-2xl hover:bg-[#F5F7F8] border border-transparent hover:border-[#E2E7EA] flex items-center justify-between text-xs transition cursor-pointer group"
                 >
                   <div className="flex items-center gap-2.5 truncate">
                     <TypeIcon type={s.type} />
-                    <span className="font-medium text-[#E6EDF3] group-hover:text-[#38BDF8] truncate transition">
+                    <span className="font-medium text-[#141A22] group-hover:text-[#3B4CC0] truncate transition">
                       {s.title}
                     </span>
                   </div>
-                  <span className="text-[10px] font-mono text-[#8B949E] uppercase bg-[#090D14] px-2 py-0.5 rounded-lg border border-[#222B3D]">
+                  <span className="text-[10px] font-mono text-neutral-500 uppercase bg-[#F5F7F8] px-2 py-0.5 rounded-lg border border-[#E2E7EA]">
                     {s.type}
                   </span>
                 </button>
@@ -118,8 +118,8 @@ export default function CommandPalette({
           {/* Prompts Section */}
           {starterPrompts.length > 0 && (
             <div className="space-y-1">
-              <div className="px-3 py-1 text-[10px] uppercase font-semibold text-[#8B949E] tracking-wider flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-[#8B5CF6]" />
+              <div className="px-3 py-1 text-[10px] uppercase font-semibold text-neutral-400 tracking-wider flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-[#3B4CC0]" />
                 Starter Prompts
               </div>
               {starterPrompts.map((p, idx) => (
@@ -130,17 +130,17 @@ export default function CommandPalette({
                     if (onSelectPrompt) onSelectPrompt(p);
                     onClose();
                   }}
-                  className="w-full text-left p-3 rounded-2xl hover:bg-[#192030] border border-transparent hover:border-[#8B5CF6]/30 flex items-center justify-between text-xs text-[#E6EDF3] transition cursor-pointer group"
+                  className="w-full text-left p-3 rounded-2xl hover:bg-[#F5F7F8] border border-transparent hover:border-[#E2E7EA] flex items-center justify-between text-xs text-neutral-700 transition cursor-pointer group"
                 >
                   <span>{p}</span>
-                  <ArrowRight className="w-3.5 h-3.5 text-[#8B949E] group-hover:text-[#8B5CF6] transition transform group-hover:translate-x-1" />
+                  <ArrowRight className="w-3.5 h-3.5 text-neutral-400 group-hover:text-[#3B4CC0] transition transform group-hover:translate-x-1" />
                 </button>
               ))}
             </div>
           )}
 
           {filteredSources.length === 0 && starterPrompts.length === 0 && (
-            <div className="py-8 text-center text-xs text-[#8B949E]">
+            <div className="py-8 text-center text-xs text-neutral-400">
               No matching sources or prompts found for "{query}".
             </div>
           )}
@@ -151,9 +151,9 @@ export default function CommandPalette({
 }
 
 function TypeIcon({ type }: { type: string }) {
-  if (type === "PDF") return <File className="w-4 h-4 text-red-400 shrink-0" />;
-  if (type === "YOUTUBE") return <Video className="w-4 h-4 text-red-400 shrink-0" />;
-  if (type === "WEBSITE") return <Link2 className="w-4 h-4 text-sky-400 shrink-0" />;
-  if (type === "TRANSCRIPT") return <Upload className="w-4 h-4 text-emerald-400 shrink-0" />;
-  return <FileText className="w-4 h-4 text-[#8B949E] shrink-0" />;
+  if (type === "PDF") return <File className="w-4 h-4 text-red-500 shrink-0" />;
+  if (type === "YOUTUBE") return <Video className="w-4 h-4 text-red-500 shrink-0" />;
+  if (type === "WEBSITE") return <Link2 className="w-4 h-4 text-blue-500 shrink-0" />;
+  if (type === "TRANSCRIPT") return <Upload className="w-4 h-4 text-emerald-600 shrink-0" />;
+  return <FileText className="w-4 h-4 text-neutral-500 shrink-0" />;
 }

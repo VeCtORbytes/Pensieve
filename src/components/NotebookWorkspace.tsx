@@ -22,9 +22,9 @@ export default function NotebookWorkspace({
   }, [railOpen]);
 
   return (
-    <div className="flex flex-1 overflow-hidden bg-[#090D14] text-[#E6EDF3]">
+    <div className="flex flex-1 overflow-hidden bg-[#F5F7F8] text-[#141A22]">
       {/* Reference rail — persistent from md up */}
-      <aside className="hidden md:flex md:w-[260px] lg:w-[300px] shrink-0 flex-col overflow-hidden border-r border-[#222B3D] bg-[#090D14]">
+      <aside className="hidden md:flex md:w-[260px] lg:w-[300px] shrink-0 flex-col overflow-hidden border-r border-[#E2E7EA] bg-[#F5F7F8]">
         <SourcePanel notebookId={notebookId} />
       </aside>
 
@@ -35,20 +35,20 @@ export default function NotebookWorkspace({
             type="button"
             aria-label="Close sources"
             onClick={() => setRailOpen(false)}
-            className="absolute inset-0 bg-black/70 backdrop-blur-xs"
+            className="absolute inset-0 bg-black/40 backdrop-blur-xs"
           />
           <aside
             role="dialog"
             aria-modal="true"
             aria-label="Sources"
-            className="relative flex w-[86%] max-w-[330px] flex-col bg-[#090D14] shadow-2xl border-r border-[#222B3D]"
+            className="relative flex w-[86%] max-w-[330px] flex-col bg-[#F5F7F8] shadow-2xl border-r border-[#E2E7EA]"
           >
-            <div className="flex justify-end border-b border-[#222B3D] px-2 py-1.5">
+            <div className="flex justify-end border-b border-[#E2E7EA] px-2 py-1.5">
               <button
                 type="button"
                 aria-label="Close sources"
                 onClick={() => setRailOpen(false)}
-                className="rounded-xl p-1.5 text-[#8B949E] transition hover:bg-[#111622] hover:text-[#E6EDF3]"
+                className="rounded-xl p-1.5 text-neutral-400 transition hover:bg-white hover:text-[#141A22]"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -61,7 +61,7 @@ export default function NotebookWorkspace({
       )}
 
       {/* Conversation column */}
-      <section className="flex min-w-0 flex-1 flex-col bg-[#090D14]">
+      <section className="flex min-w-0 flex-1 flex-col bg-white">
         <ChatPanel
           notebookId={notebookId}
           sourceCount={sourceCount}

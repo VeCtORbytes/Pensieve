@@ -14,7 +14,7 @@ const FlashcardsSchema = z.object({
       question: z.string().describe("Clear, concise study question testing a key concept"),
       answer: z.string().describe("Detailed, authoritative answer"),
       topic: z.string().describe("Broad topic tag (e.g. Superposition, Key Term, Algorithm)"),
-      sourceTitle: z.string().optional().describe("Title of the source document referenced"),
+      sourceTitle: z.string().describe("Title of the source document referenced"),
     })
   ),
 });
@@ -34,7 +34,7 @@ const QuizSchema = z.object({
         .max(3)
         .describe("0-based index of the correct option"),
       explanation: z.string().describe("Detailed explanation of why the correct option is right"),
-      sourceTitle: z.string().optional().describe("Title of the source document referenced"),
+      sourceTitle: z.string().describe("Title of the source document referenced"),
     })
   ),
 });

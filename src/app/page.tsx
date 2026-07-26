@@ -24,10 +24,14 @@ export default async function HomePage() {
     <main className="min-h-screen bg-[#F5F7F8] bg-mesh text-[#141A22] px-6 py-12">
       <div className="mx-auto max-w-5xl space-y-10">
         {/* Navigation Bar with Auth */}
-        <div className="flex items-center justify-between pb-4 border-b border-[#E2E7EA]">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-[#3B4CC0]" />
-            <span className="font-serif-display text-2xl font-normal text-[#141A22]">Pensieve</span>
+        <div className="flex items-center justify-between pb-5 border-b border-[#E2E7EA]">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-[#3B4CC0]/10 border border-[#3B4CC0]/20 text-[#3B4CC0]">
+              <Sparkles className="w-5 h-5 animate-pulse" />
+            </div>
+            <span className="font-serif-display text-2xl font-normal text-[#141A22] tracking-wide">
+              Pensieve
+            </span>
           </div>
           <AuthControls />
         </div>
@@ -38,7 +42,7 @@ export default async function HomePage() {
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-[#E2E7EA] shadow-2xs">
               <Sparkles className="w-3.5 h-3.5 text-[#3B4CC0] animate-pulse" />
               <span className="text-[11px] font-semibold text-[#141A22]">
-                Precision Grounded RAG Vessel
+                Precision Grounded RAG Basin
               </span>
             </div>
 
@@ -47,17 +51,17 @@ export default async function HomePage() {
             </h1>
 
             <p className="text-xs text-neutral-500 max-w-lg leading-relaxed">
-              Pour PDFs, articles, YouTube videos, and transcripts into isolated vector knowledge vessels.
-              Retrieve precision answers with exact page and timestamp locators.
+              Pour PDFs, research articles, YouTube videos, and transcripts into isolated vector knowledge basins.
+              Retrieve precision answers grounded in exact page and timestamp locators.
             </p>
 
             {/* Metrics Pills */}
             <div className="flex items-center gap-4 pt-1 text-xs font-mono">
-              <div className="flex items-center gap-1.5 text-neutral-600 bg-white/80 px-2.5 py-1 rounded-lg border border-[#E2E7EA]">
+              <div className="flex items-center gap-1.5 text-[#141A22] bg-white px-3 py-1.5 rounded-xl border border-[#E2E7EA] shadow-2xs">
                 <Layers className="w-3.5 h-3.5 text-[#3B4CC0]" />
                 <span>{notebooks.length} Vessels</span>
               </div>
-              <div className="flex items-center gap-1.5 text-neutral-600 bg-white/80 px-2.5 py-1 rounded-lg border border-[#E2E7EA]">
+              <div className="flex items-center gap-1.5 text-[#141A22] bg-white px-3 py-1.5 rounded-xl border border-[#E2E7EA] shadow-2xs">
                 <Database className="w-3.5 h-3.5 text-[#1D9E75]" />
                 <span>{totalSources} Ingested Sources</span>
               </div>
@@ -65,20 +69,23 @@ export default async function HomePage() {
           </div>
 
           {/* New Notebook Form */}
-          <form action={createNotebook} className="bg-white p-4 rounded-2xl border border-[#E2E7EA] shadow-md space-y-3 shrink-0 sm:w-80">
-            <div className="text-xs font-semibold text-[#141A22]">Create New Vessel</div>
+          <form action={createNotebook} className="bg-white p-5 rounded-2xl border border-[#E2E7EA] shadow-md space-y-3.5 shrink-0 sm:w-80">
+            <div className="text-xs font-semibold text-[#141A22] flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-[#3B4CC0]" />
+              Initialize New Vessel
+            </div>
             <input
               type="text"
               name="title"
               placeholder="e.g. Quantum Computing Research"
-              className="w-full px-3.5 py-2.5 text-xs bg-[#F5F7F8] border border-[#E2E7EA] rounded-xl outline-none focus:ring-2 focus:ring-[#3B4CC0] focus:bg-white transition"
+              className="w-full px-3.5 py-2.5 text-xs bg-[#F5F7F8] border border-[#E2E7EA] rounded-xl outline-none focus:ring-2 focus:ring-[#3B4CC0] focus:bg-white text-[#141A22] placeholder:text-neutral-400 transition"
             />
             <button
               type="submit"
               className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#141A22] hover:bg-[#3B4CC0] py-2.5 text-xs font-semibold text-white shadow-sm transition cursor-pointer"
             >
               <Plus className="h-4 w-4" />
-              Initialize Vessel
+              Conjure Vessel
             </button>
           </form>
         </div>
@@ -90,7 +97,7 @@ export default async function HomePage() {
             <div>
               <p className="text-base font-serif-display text-[#141A22]">No memory vessels created yet</p>
               <p className="text-xs text-neutral-400 mt-1 max-w-sm mx-auto">
-                Create a new vessel above to ingest your first research paper, website, or video source.
+                Create a new vessel above to pour in your first research paper, website, or video source.
               </p>
             </div>
           </div>
@@ -102,8 +109,8 @@ export default async function HomePage() {
                 href={`/notebook/${n.id}`}
                 className="group relative p-6 rounded-2xl bg-white border border-[#E2E7EA] hover:border-[#3B4CC0] shadow-xs hover:shadow-xl transition-all duration-300 block space-y-4 overflow-hidden"
               >
-                {/* Accent Corner Line */}
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#3B4CC0] to-transparent opacity-0 group-hover:opacity-100 transition duration-300" />
+                {/* Accent Top Line */}
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#3B4CC0] to-[#1D9E75] opacity-0 group-hover:opacity-100 transition duration-300" />
 
                 <div className="space-y-1">
                   <h2 className="font-serif-display text-xl font-normal text-[#141A22] group-hover:text-[#3B4CC0] transition truncate">
@@ -114,8 +121,8 @@ export default async function HomePage() {
                   </p>
                 </div>
 
-                <div className="pt-3 border-t border-[#E2E7EA]/60 flex items-center justify-between text-xs">
-                  <span className="font-mono text-[11px] bg-[#F5F7F8] px-2.5 py-1 rounded-lg text-neutral-700 font-semibold border border-[#E2E7EA]/40">
+                <div className="pt-3 border-t border-[#E2E7EA] flex items-center justify-between text-xs">
+                  <span className="font-mono text-[11px] bg-[#F5F7F8] px-2.5 py-1 rounded-lg text-neutral-700 font-semibold border border-[#E2E7EA]">
                     {n._count.sources} {n._count.sources === 1 ? "source" : "sources"}
                   </span>
                   <span className="text-[#3B4CC0] font-semibold text-xs flex items-center gap-1 opacity-0 group-hover:opacity-100 transition transform translate-x-1 group-hover:translate-x-0">

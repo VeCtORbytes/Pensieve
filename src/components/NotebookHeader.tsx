@@ -8,7 +8,6 @@ import AudioPlayer from "@/components/AudioPlayer";
 import CommandPalette from "@/components/CommandPalette";
 import SourceViewerModal from "@/components/SourceViewerModal";
 import AuthControls from "@/components/AuthControls";
-
 import StudyToolsModal from "@/components/StudyToolsModal";
 
 export default function NotebookHeader({
@@ -72,7 +71,7 @@ export default function NotebookHeader({
 
   return (
     <>
-      <header className="flex items-center gap-2 border-b border-[#E2E7EA] bg-white/80 backdrop-blur-md px-3 py-2.5 sm:gap-3 sm:px-6 sm:py-3 sticky top-0 z-30 shadow-2xs">
+      <header className="flex items-center gap-2 border-b border-[#E2E7EA] bg-white/90 backdrop-blur-md px-3 py-2.5 sm:gap-3 sm:px-6 sm:py-3 sticky top-0 z-30 shadow-2xs text-[#141A22]">
         <Link
           href="/"
           aria-label="Back to all notebooks"
@@ -108,11 +107,11 @@ export default function NotebookHeader({
         <button
           type="button"
           onClick={() => setIsCmdPaletteOpen(true)}
-          className="hidden shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border border-[#E2E7EA] bg-white px-3 py-1.5 font-mono text-xs text-neutral-500 shadow-2xs transition hover:border-[#3B4CC0] md:flex"
+          className="hidden shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border border-[#E2E7EA] bg-white px-3 py-1.5 font-mono text-xs text-neutral-600 shadow-2xs transition hover:border-[#3B4CC0] md:flex"
         >
           <Search className="h-3.5 w-3.5 text-neutral-400" />
           <span>Search</span>
-          <kbd className="rounded border border-[#E2E7EA] bg-[#F5F7F8] px-1 text-[10px]">⌘K</kbd>
+          <kbd className="rounded border border-[#E2E7EA] bg-[#F5F7F8] px-1 text-[10px] text-neutral-700">⌘K</kbd>
         </button>
 
         {/* Study Tools Button */}
@@ -120,9 +119,9 @@ export default function NotebookHeader({
           type="button"
           onClick={() => setIsStudyToolsOpen(true)}
           aria-label="Open AI Study Tools"
-          className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl bg-[#111622] hover:bg-[#192030] border border-[#222B3D] hover:border-[#8B5CF6] px-3.5 py-1.5 text-xs font-semibold text-[#E6EDF3] shadow-sm transition"
+          className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl bg-white hover:bg-[#F5F7F8] border border-[#E2E7EA] hover:border-[#3B4CC0] px-3.5 py-1.5 text-xs font-semibold text-[#141A22] shadow-2xs transition"
         >
-          <Sparkles className="h-3.5 w-3.5 text-[#38BDF8] animate-pulse" />
+          <Sparkles className="h-3.5 w-3.5 text-[#3B4CC0] animate-pulse" />
           <span className="hidden sm:inline">Study Tools</span>
         </button>
 
@@ -132,7 +131,7 @@ export default function NotebookHeader({
           disabled={isGeneratingAudio}
           onClick={handleGenerateAudioOverview}
           aria-label="Generate audio overview"
-          className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl bg-[#8B5CF6] hover:bg-[#7C3AED] px-3.5 py-1.5 text-xs font-semibold text-white shadow-md transition disabled:opacity-50"
+          className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl bg-[#141A22] hover:bg-[#3B4CC0] px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs transition disabled:opacity-50"
         >
           {isGeneratingAudio ? (
             <>
@@ -153,7 +152,7 @@ export default function NotebookHeader({
           onClick={remove}
           aria-label="Delete notebook"
           title="Delete notebook"
-          className="shrink-0 cursor-pointer rounded-xl p-2 text-[#8B949E] transition hover:bg-red-950/40 hover:text-red-400"
+          className="shrink-0 cursor-pointer rounded-xl p-2 text-neutral-400 transition hover:bg-red-50 hover:text-red-600"
         >
           <Trash2 className="h-4 w-4" />
         </button>
