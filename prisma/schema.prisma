@@ -39,11 +39,14 @@ enum VariantStatus {
 
 model Notebook {
   id        String    @id @default(cuid())
+  userId    String?
   title     String    @default("Untitled notebook")
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   sources   Source[]
   messages  Message[]
+
+  @@index([userId])
 }
 
 model Source {

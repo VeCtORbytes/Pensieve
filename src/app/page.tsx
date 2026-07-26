@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { auth } from "@clerk/nextjs/server";
 import { Sparkles, Plus, BookOpen, Layers, Database, ArrowRight } from "lucide-react";
 import { db } from "@/lib/db";
 import { createNotebook } from "./actions/notebooks";
@@ -7,7 +8,12 @@ import AuthControls from "@/components/AuthControls";
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
+  const { userId } = await auth();
+
   const notebooks = await db.notebook.findMany({
+    where: userId
+      ? { OR: [{ userId }, { userId: null }] }
+      : { userId: null },
     orderBy: { updatedAt: "desc" },
     include: { _count: { select: { sources: true } } },
   });

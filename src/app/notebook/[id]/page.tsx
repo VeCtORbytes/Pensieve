@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import NotebookHeader from "@/components/NotebookHeader";
 import NotebookWorkspace from "@/components/NotebookWorkspace";
@@ -12,6 +13,7 @@ export default async function NotebookPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const { userId } = await auth();
 
   const notebook = await db.notebook.findUnique({
     where: { id },
@@ -19,6 +21,11 @@ export default async function NotebookPage({
   });
 
   if (!notebook) notFound();
+
+  // Enforce notebook user ownership
+  if (notebook.userId && notebook.userId !== userId) {
+    notFound();
+  }
 
   const hasSources = notebook.sources.length > 0;
 
