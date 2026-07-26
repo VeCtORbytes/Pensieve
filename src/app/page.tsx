@@ -3,6 +3,8 @@ import { FileText, Plus } from "lucide-react";
 import { db } from "@/lib/db";
 import { createNotebook } from "./actions/notebooks";
 
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
   const notebooks = await db.notebook.findMany({
     orderBy: { updatedAt: "desc" },

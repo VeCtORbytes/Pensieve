@@ -4,6 +4,8 @@ import NotebookHeader from "@/components/NotebookHeader";
 import SourcePanel from "@/components/SourcePanel";
 import ChatPanel from "@/components/ChatPanel";
 
+export const dynamic = "force-dynamic";
+
 export default async function NotebookPage({
   params,
 }: {
