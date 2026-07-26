@@ -7,7 +7,9 @@ import { extractPdf, extractWebsite, extractYoutube } from "@/lib/extractors";
 import { SourceType } from "@prisma/client";
 import crypto from "crypto";
 
+// Max duration for Vercel route handler inline execution (60s)
 export const maxDuration = 60;
+
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import NotebookHeader from "@/components/NotebookHeader";
 import SourcePanel from "@/components/SourcePanel";
+import ChatPanel from "@/components/ChatPanel";
 
 export default async function NotebookPage({
   params,
@@ -26,8 +27,8 @@ export default async function NotebookPage({
           <SourcePanel notebookId={notebook.id} />
         </aside>
 
-        <section className="flex items-center justify-center bg-neutral-50/30">
-          <p className="text-sm text-neutral-400">Chat arrives in P4.</p>
+        <section className="flex flex-col overflow-hidden bg-neutral-50/30">
+          <ChatPanel notebookId={notebook.id} />
         </section>
       </div>
     </div>

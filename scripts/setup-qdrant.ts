@@ -28,6 +28,27 @@ async function createQdrantCollection() {
       });
       console.log(`Collection "${COLLECTION_NAME}" created successfully.`);
     }
+
+    console.log("Ensuring payload index for notebookId...");
+    try {
+      await client.createPayloadIndex(COLLECTION_NAME, {
+        field_name: "notebookId",
+        field_schema: "keyword",
+      });
+      console.log("Payload index for notebookId ensured.");
+    } catch (idxErr: any) {
+      console.log("Payload index notice:", idxErr.message || idxErr);
+    }
+
+    try {
+      await client.createPayloadIndex(COLLECTION_NAME, {
+        field_name: "sourceId",
+        field_schema: "keyword",
+      });
+      console.log("Payload index for sourceId ensured.");
+    } catch (idxErr: any) {
+      console.log("Payload index notice:", idxErr.message || idxErr);
+    }
   } catch (error) {
     console.error("Error setting up Qdrant collection:", error);
     process.exit(1);
