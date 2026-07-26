@@ -1,27 +1,31 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Plus, FileText, Upload, AlertCircle, CheckCircle2, Loader2, X } from "lucide-react";
+import { Plus, FileText, Upload, Link2, Video, File, Loader2, X } from "lucide-react";
 
 interface Source {
   id: string;
   notebookId: string;
   type: string;
   title: string;
+  url?: string | null;
   status: "QUEUED" | "EXTRACTING" | "EMBEDDING" | "READY" | "FAILED";
   error?: string | null;
   chunkCount: number;
   createdAt: string;
 }
 
+type TabType = "text" | "vtt" | "pdf" | "website" | "youtube";
+
 export default function SourcePanel({ notebookId }: { notebookId: string }) {
   const [sources, setSources] = useState<Source[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"text" | "vtt">("text");
+  const [activeTab, setActiveTab] = useState<TabType>("text");
 
   // Form states
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [url, setUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
@@ -44,9 +48,34 @@ export default function SourcePanel({ notebookId }: { notebookId: string }) {
     return () => clearInterval(interval);
   }, [fetchSources]);
 
+  function resetForm() {
+    setTitle("");
+    setContent("");
+    setUrl("");
+    setSubmitError("");
+  }
+
   async function handleCreateSource(e: React.FormEvent) {
     e.preventDefault();
-    if (!title.trim() || !content.trim()) return;
+
+    let sourceType = "TEXT";
+    let bodyContent = content;
+    let bodyUrl = url;
+
+    if (activeTab === "vtt") sourceType = "TRANSCRIPT";
+    if (activeTab === "pdf") sourceType = "PDF";
+    if (activeTab === "website") {
+      sourceType = "WEBSITE";
+      bodyContent = url;
+    }
+    if (activeTab === "youtube") {
+      sourceType = "YOUTUBE";
+      bodyContent = url;
+    }
+
+    if (!title.trim()) return;
+    if ((activeTab === "website" || activeTab === "youtube") && !url.trim()) return;
+    if ((activeTab === "text" || activeTab === "vtt" || activeTab === "pdf") && !content.trim()) return;
 
     setIsSubmitting(true);
     setSubmitError("");
@@ -57,9 +86,10 @@ export default function SourcePanel({ notebookId }: { notebookId: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           notebookId,
-          type: activeTab === "vtt" ? "TRANSCRIPT" : "TEXT",
+          type: sourceType,
           title: title.trim(),
-          content: content,
+          content: bodyContent,
+          url: bodyUrl || undefined,
         }),
       });
 
@@ -68,9 +98,7 @@ export default function SourcePanel({ notebookId }: { notebookId: string }) {
         throw new Error(errData.error || "Failed to create source");
       }
 
-      // Reset form & close modal
-      setTitle("");
-      setContent("");
+      resetForm();
       setIsModalOpen(false);
       fetchSources();
     } catch (err: any) {
@@ -80,21 +108,35 @@ export default function SourcePanel({ notebookId }: { notebookId: string }) {
     }
   }
 
-  function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleVttUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (!title) {
-      const baseName = file.name.replace(/\.[^/.]+$/, "");
-      setTitle(baseName);
+      setTitle(file.name.replace(/\.[^/.]+$/, ""));
     }
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      const text = event.target?.result as string;
-      setContent(text || "");
+      setContent((event.target?.result as string) || "");
     };
     reader.readAsText(file);
+  }
+
+  function handlePdfUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!title) {
+      setTitle(file.name.replace(/\.[^/.]+$/, ""));
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      setContent(base64 || "");
+    };
+    reader.readAsDataURL(file);
   }
 
   return (
@@ -104,7 +146,10 @@ export default function SourcePanel({ notebookId }: { notebookId: string }) {
           Sources ({sources.length})
         </h2>
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            resetForm();
+            setIsModalOpen(true);
+          }}
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-neutral-900 rounded-lg hover:bg-neutral-800 transition"
         >
           <Plus className="w-3.5 h-3.5" />
@@ -118,7 +163,7 @@ export default function SourcePanel({ notebookId }: { notebookId: string }) {
             <FileText className="w-8 h-8 mx-auto text-neutral-300 mb-2" />
             <p className="text-xs">No sources added yet.</p>
             <p className="text-[11px] text-neutral-400 mt-1">
-              Add text or VTT transcripts to ground your AI.
+              Add PDF, Website, YouTube, Text, or VTT sources.
             </p>
           </div>
         ) : (
@@ -156,7 +201,7 @@ export default function SourcePanel({ notebookId }: { notebookId: string }) {
       {/* Modal Dialog */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-xl max-w-lg w-full p-6 shadow-2xl space-y-5 border border-neutral-200">
+          <div className="bg-white rounded-xl max-w-xl w-full p-6 shadow-2xl space-y-5 border border-neutral-200">
             <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
               <h3 className="text-base font-semibold text-neutral-900">Add Knowledge Source</h3>
               <button
@@ -167,28 +212,35 @@ export default function SourcePanel({ notebookId }: { notebookId: string }) {
               </button>
             </div>
 
-            {/* Tab navigation */}
-            <div className="flex border-b border-neutral-200">
-              <button
-                onClick={() => setActiveTab("text")}
-                className={`flex-1 py-2 text-xs font-semibold border-b-2 text-center transition ${
-                  activeTab === "text"
-                    ? "border-neutral-900 text-neutral-900"
-                    : "border-transparent text-neutral-400 hover:text-neutral-700"
-                }`}
-              >
-                Paste Text
-              </button>
-              <button
-                onClick={() => setActiveTab("vtt")}
-                className={`flex-1 py-2 text-xs font-semibold border-b-2 text-center transition ${
-                  activeTab === "vtt"
-                    ? "border-neutral-900 text-neutral-900"
-                    : "border-transparent text-neutral-400 hover:text-neutral-700"
-                }`}
-              >
-                Upload VTT Transcript
-              </button>
+            {/* Tab navigation for 5 sources */}
+            <div className="flex border-b border-neutral-200 text-xs overflow-x-auto">
+              {[
+                { id: "text", label: "Text", icon: FileText },
+                { id: "pdf", label: "PDF", icon: File },
+                { id: "website", label: "Website", icon: Link2 },
+                { id: "youtube", label: "YouTube", icon: Video },
+                { id: "vtt", label: "VTT", icon: Upload },
+              ].map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => {
+                      setActiveTab(tab.id as TabType);
+                      setSubmitError("");
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-2 border-b-2 font-medium transition whitespace-nowrap ${
+                      activeTab === tab.id
+                        ? "border-neutral-900 text-neutral-900"
+                        : "border-transparent text-neutral-400 hover:text-neutral-700"
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    {tab.label}
+                  </button>
+                );
+              })}
             </div>
 
             <form onSubmit={handleCreateSource} className="space-y-4">
@@ -199,13 +251,64 @@ export default function SourcePanel({ notebookId }: { notebookId: string }) {
                 <input
                   type="text"
                   required
-                  placeholder={activeTab === "vtt" ? "e.g. Lecture Transcript" : "e.g. Research Notes"}
+                  placeholder="e.g. Documentation / Lecture Video"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg outline-none focus:ring-2 focus:ring-neutral-900"
                 />
               </div>
 
+              {/* PDF Tab */}
+              {activeTab === "pdf" && (
+                <div>
+                  <label className="block text-xs font-medium text-neutral-700 mb-1">
+                    Select .pdf File
+                  </label>
+                  <input
+                    type="file"
+                    accept=".pdf"
+                    required={!content}
+                    onChange={handlePdfUpload}
+                    className="w-full text-xs text-neutral-500 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-neutral-100 file:text-neutral-700 hover:file:bg-neutral-200"
+                  />
+                </div>
+              )}
+
+              {/* Website Tab */}
+              {activeTab === "website" && (
+                <div>
+                  <label className="block text-xs font-medium text-neutral-700 mb-1">
+                    Website URL
+                  </label>
+                  <input
+                    type="url"
+                    required
+                    placeholder="https://example.com/article"
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg outline-none focus:ring-2 focus:ring-neutral-900"
+                  />
+                </div>
+              )}
+
+              {/* YouTube Tab */}
+              {activeTab === "youtube" && (
+                <div>
+                  <label className="block text-xs font-medium text-neutral-700 mb-1">
+                    YouTube Video URL
+                  </label>
+                  <input
+                    type="url"
+                    required
+                    placeholder="https://www.youtube.com/watch?v=..."
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg outline-none focus:ring-2 focus:ring-neutral-900"
+                  />
+                </div>
+              )}
+
+              {/* VTT Tab */}
               {activeTab === "vtt" && (
                 <div>
                   <label className="block text-xs font-medium text-neutral-700 mb-1">
@@ -214,29 +317,28 @@ export default function SourcePanel({ notebookId }: { notebookId: string }) {
                   <input
                     type="file"
                     accept=".vtt,.txt"
-                    onChange={handleFileUpload}
+                    onChange={handleVttUpload}
                     className="w-full text-xs text-neutral-500 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-neutral-100 file:text-neutral-700 hover:file:bg-neutral-200"
                   />
                 </div>
               )}
 
-              <div>
-                <label className="block text-xs font-medium text-neutral-700 mb-1">
-                  {activeTab === "vtt" ? "Transcript Content (or edit text)" : "Content Text"}
-                </label>
-                <textarea
-                  required
-                  rows={6}
-                  placeholder={
-                    activeTab === "vtt"
-                      ? "WEBVTT\n\n00:00.000 --> 00:04.000\nWelcome to NotebookLLM..."
-                      : "Paste article, raw text, or document notes here..."
-                  }
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  className="w-full px-3 py-2 text-xs font-mono border border-neutral-300 rounded-lg outline-none focus:ring-2 focus:ring-neutral-900"
-                />
-              </div>
+              {/* Text Area for Text / VTT / PDF content view */}
+              {(activeTab === "text" || activeTab === "vtt") && (
+                <div>
+                  <label className="block text-xs font-medium text-neutral-700 mb-1">
+                    Content Text
+                  </label>
+                  <textarea
+                    required
+                    rows={5}
+                    placeholder="Paste article, raw text, or document notes here..."
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                    className="w-full px-3 py-2 text-xs font-mono border border-neutral-300 rounded-lg outline-none focus:ring-2 focus:ring-neutral-900"
+                  />
+                </div>
+              )}
 
               {submitError && (
                 <p className="text-xs text-red-600 bg-red-50 p-2 rounded">{submitError}</p>
@@ -257,7 +359,7 @@ export default function SourcePanel({ notebookId }: { notebookId: string }) {
                 >
                   {isSubmitting ? (
                     <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> Processing...
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> Ingesting...
                     </>
                   ) : (
                     "Ingest Source"

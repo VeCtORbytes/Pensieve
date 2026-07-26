@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { qdrant, NOTEBOOK_COLLECTION_NAME } from "@/lib/qdrant";
 import { cleanVtt, chunkText } from "@/lib/chunking";
 import { generateEmbeddings } from "@/lib/embeddings";
+import { extractPdf, extractWebsite, extractYoutube } from "@/lib/extractors";
 import { SourceType } from "@prisma/client";
 import crypto from "crypto";
 
@@ -27,16 +28,17 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { notebookId, type, title, content } = body;
+    const { notebookId, type, title, content, url } = body;
 
-    if (!notebookId || !type || !title || !content) {
+    if (!notebookId || !type || !title) {
       return NextResponse.json(
-        { error: "notebookId, type, title, and content are required" },
+        { error: "notebookId, type, and title are required" },
         { status: 400 }
       );
     }
 
     const sourceType = (type as string).toUpperCase() as SourceType;
+    const sourceContent = content || url || "";
 
     // 1. Initial State: QUEUED
     const source = await db.source.create({
@@ -44,13 +46,14 @@ export async function POST(req: NextRequest) {
         notebookId,
         type: sourceType,
         title: title.trim(),
-        rawText: content,
+        url: url || (type === "WEBSITE" || type === "YOUTUBE" ? content : null),
+        rawText: sourceType === "TEXT" ? sourceContent : null,
         status: "QUEUED",
       },
     });
 
     // Execute inline ingestion pipeline
-    processSourceInline(source.id, sourceType, content, notebookId).catch((err) => {
+    processSourceInline(source.id, sourceType, sourceContent, notebookId).catch((err) => {
       console.error(`Background execution error for source ${source.id}:`, err);
     });
 
@@ -77,13 +80,29 @@ async function processSourceInline(
       data: { status: "EXTRACTING" },
     });
 
-    let extractedText = rawContent;
-    if (type === "TRANSCRIPT" || type === "YOUTUBE") {
+    let extractedText = "";
+
+    if (type === "PDF") {
+      const base64Data = rawContent.includes(",") ? rawContent.split(",")[1] : rawContent;
+      const pdfBuffer = Buffer.from(base64Data, "base64");
+      extractedText = await extractPdf(pdfBuffer);
+    } else if (type === "WEBSITE") {
+      extractedText = await extractWebsite(rawContent);
+    } else if (type === "YOUTUBE") {
+      if (rawContent.startsWith("http://") || rawContent.startsWith("https://")) {
+        extractedText = await extractYoutube(rawContent);
+      } else {
+        extractedText = cleanVtt(rawContent);
+      }
+    } else if (type === "TRANSCRIPT") {
       extractedText = cleanVtt(rawContent);
+    } else {
+      // TEXT
+      extractedText = rawContent;
     }
 
-    if (!extractedText.trim()) {
-      throw new Error("Extracted text content is empty.");
+    if (!extractedText || !extractedText.trim()) {
+      throw new Error(`Failed to extract text from ${type} source content.`);
     }
 
     // Phase 2: EMBEDDING
