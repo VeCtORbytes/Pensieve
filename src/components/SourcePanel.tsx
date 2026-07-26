@@ -41,6 +41,7 @@ export default function SourcePanel({
   const [selectedViewerSource, setSelectedViewerSource] = useState<Source | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [actionSourceId, setActionSourceId] = useState<string | null>(null);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
 
   // Form states
   const [title, setTitle] = useState("");
@@ -49,17 +50,12 @@ export default function SourcePanel({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
-  // Sync initialOpenModal & initialTab when props change
   useEffect(() => {
-    if (initialOpenModal) {
-      setIsModalOpen(true);
-    }
+    if (initialOpenModal) setIsModalOpen(true);
   }, [initialOpenModal]);
 
   useEffect(() => {
-    if (initialTab) {
-      setActiveTab(initialTab);
-    }
+    if (initialTab) setActiveTab(initialTab);
   }, [initialTab]);
 
   const fetchSources = useCallback(async () => {
@@ -74,7 +70,6 @@ export default function SourcePanel({
     }
   }, [notebookId]);
 
-  // Poll every 2 seconds
   useEffect(() => {
     fetchSources();
     const interval = setInterval(fetchSources, 2000);
@@ -92,6 +87,50 @@ export default function SourcePanel({
     setIsModalOpen(false);
     resetForm();
     if (onModalClose) onModalClose();
+  }
+
+  async function handleBatchUploadFiles(files: FileList) {
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const name = file.name.replace(/\.[^/.]+$/, "");
+      const ext = file.name.split(".").pop()?.toLowerCase();
+
+      let type = "TEXT";
+      if (ext === "pdf") type = "PDF";
+      if (ext === "vtt") type = "TRANSCRIPT";
+
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const contentData = (e.target?.result as string) || "";
+        try {
+          await fetch("/api/sources", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              notebookId,
+              type,
+              title: name,
+              content: contentData,
+            }),
+          });
+          await fetchSources();
+          router.refresh();
+        } catch (err) {
+          console.error("Failed batch file upload:", err);
+        }
+      };
+
+      if (ext === "pdf") reader.readAsDataURL(file);
+      else reader.readAsText(file);
+    }
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDraggingOver(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleBatchUploadFiles(e.dataTransfer.files);
+    }
   }
 
   async function handleCreateSource(e: React.FormEvent) {
@@ -142,7 +181,7 @@ export default function SourcePanel({
       if (onModalClose) onModalClose();
 
       await fetchSources();
-      router.refresh(); // Refresh Server Components so notebook/[id]/page switches view
+      router.refresh();
     } catch (err: any) {
       setSubmitError(err.message || "Failed to add source");
     } finally {
@@ -218,7 +257,25 @@ export default function SourcePanel({
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#F5F7F8]">
+    <div
+      onDragOver={(e) => {
+        e.preventDefault();
+        setIsDraggingOver(true);
+      }}
+      onDragLeave={() => setIsDraggingOver(false)}
+      onDrop={handleDrop}
+      className={`flex flex-col h-full bg-[#F5F7F8] relative transition ${
+        isDraggingOver ? "ring-2 ring-inset ring-[#3B4CC0] bg-blue-50/40" : ""
+      }`}
+    >
+      {/* Drag Over Overlay */}
+      {isDraggingOver && (
+        <div className="absolute inset-0 z-30 bg-[#3B4CC0]/10 backdrop-blur-2xs flex flex-col items-center justify-center text-center p-4">
+          <Upload className="w-8 h-8 text-[#3B4CC0] animate-bounce mb-2" />
+          <p className="text-xs font-semibold text-[#3B4CC0]">Drop files here to ingest into Pensieve</p>
+        </div>
+      )}
+
       {/* Quiet Rail Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[#E2E7EA]">
         <span className="text-[11px] font-semibold uppercase tracking-wider text-[#141A22]/60">
@@ -237,11 +294,12 @@ export default function SourcePanel({
         </button>
       </div>
 
-      {/* Source List (Quieter, minimal list styling) */}
+      {/* Source List */}
       <div className="flex-1 overflow-y-auto px-2 py-3 space-y-1">
         {sources.length === 0 ? (
           <div className="py-8 text-center text-neutral-400">
             <p className="text-xs text-neutral-500">No sources added yet.</p>
+            <p className="text-[10px] text-neutral-400 mt-1">Drag and drop PDF or VTT files here.</p>
           </div>
         ) : (
           sources.map((s) => (

@@ -166,9 +166,6 @@ export default function ChatPanel({ notebookId }: { notebookId: string }) {
           for (const line of lines) {
             if (!line.trim()) continue;
 
-            // AI SDK Data Stream protocol lines:
-            // 2:[{"type":"trace","data":...}]
-            // 0:"text chunk"
             if (line.startsWith("2:")) {
               try {
                 const dataArray = JSON.parse(line.slice(2));
@@ -189,7 +186,6 @@ export default function ChatPanel({ notebookId }: { notebookId: string }) {
                 accumulatedText += line.slice(2);
               }
             } else {
-              // Raw text chunk fallback
               accumulatedText += line;
             }
 
@@ -244,7 +240,7 @@ export default function ChatPanel({ notebookId }: { notebookId: string }) {
           </div>
           <div>
             <h2 className="text-sm font-semibold text-neutral-900">Pensieve AI Assistant</h2>
-            <p className="text-[11px] text-neutral-400">Grounded RAG with precision locators</p>
+            <p className="text-[11px] text-neutral-400">Answers drawn only from your sources</p>
           </div>
         </div>
       </div>
@@ -324,7 +320,11 @@ export default function ChatPanel({ notebookId }: { notebookId: string }) {
                           : "bg-neutral-100/80 text-neutral-800 rounded-tl-none border border-neutral-200/60"
                       }`}
                     >
-                      <div className="whitespace-pre-wrap">{m.content}</div>
+                      {isUser ? (
+                        <div className="whitespace-pre-wrap">{m.content}</div>
+                      ) : (
+                        renderProseWithInlineCitations(m.content, m.citations, (c) => setSelectedCitation(c))
+                      )}
                     </div>
                   )}
 
@@ -475,6 +475,47 @@ export default function ChatPanel({ notebookId }: { notebookId: string }) {
           onClose={() => setTargetViewerSource(null)}
         />
       )}
+    </div>
+  );
+}
+
+/**
+ * Parses bracket citation markers like [1], [2] inside assistant prose text and renders them as clickable superscript buttons
+ */
+function renderProseWithInlineCitations(
+  content: string,
+  citations?: CitationPayload[] | null,
+  onCitationClick?: (citation: CitationPayload) => void
+) {
+  if (!citations || citations.length === 0) {
+    return <div className="whitespace-pre-wrap">{content}</div>;
+  }
+
+  const parts = content.split(/(\[\d+\])/g);
+
+  return (
+    <div className="whitespace-pre-wrap">
+      {parts.map((part, idx) => {
+        const match = part.match(/^\[(\d+)\]$/);
+        if (match) {
+          const num = parseInt(match[1]);
+          const foundCitation = citations.find((c) => c.number === num);
+          if (foundCitation) {
+            return (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => onCitationClick && onCitationClick(foundCitation)}
+                className="inline-flex items-center mx-0.5 px-1 py-0.5 text-[10px] font-mono font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 rounded border border-emerald-300 transition cursor-pointer align-super"
+                title={`Citation [${num}]: ${foundCitation.title}`}
+              >
+                [{num}]
+              </button>
+            );
+          }
+        }
+        return <span key={idx}>{part}</span>;
+      })}
     </div>
   );
 }
