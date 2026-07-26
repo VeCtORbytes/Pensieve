@@ -88,35 +88,29 @@ export default function ChatPanel({
     };
   }, [notebookId]);
 
-  async function handleOpenSourceFromCitation(citation: CitationPayload) {
-    try {
-      setIsLoadingSourceModal(true);
-      const res = await fetch(`/api/sources?notebookId=${notebookId}`);
-      if (res.ok) {
-        const sources = await res.json();
+  function handleCitationClick(citation: CitationPayload) {
+    setSelectedCitation(citation);
+
+    // Set target viewer source IMMEDIATELY so modal opens at 0ms latency
+    setTargetViewerSource({
+      id: citation.sourceId,
+      title: citation.title,
+      type: citation.locator?.page ? "PDF" : citation.locator?.startSec !== undefined ? "YOUTUBE" : "TEXT",
+      rawText: citation.text,
+      blobUrl: null,
+      url: citation.locator?.startSec !== undefined ? `https://www.youtube.com/watch?v=preview` : undefined,
+    });
+
+    // Enrich full source details in background without blocking modal launch
+    fetch(`/api/sources?notebookId=${notebookId}`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((sources) => {
         const found = sources.find((s: any) => s.id === citation.sourceId);
         if (found) {
           setTargetViewerSource(found);
-        } else {
-          setTargetViewerSource({
-            id: citation.sourceId,
-            title: citation.title,
-            type: "YOUTUBE",
-            url: citation.locator?.startSec ? `https://www.youtube.com/watch?v=preview` : undefined,
-            rawText: citation.text,
-          });
         }
-      }
-    } catch (err) {
-      console.error("Failed to fetch source details:", err);
-    } finally {
-      setIsLoadingSourceModal(false);
-    }
-  }
-
-  function handleCitationClick(citation: CitationPayload) {
-    setSelectedCitation(citation);
-    handleOpenSourceFromCitation(citation);
+      })
+      .catch((err) => console.error("Background source fetch error:", err));
   }
 
   // Load chat history from PostgreSQL
@@ -556,9 +550,8 @@ export default function ChatPanel({
             <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-neutral-100">
               <button
                 type="button"
-                disabled={isLoadingSourceModal}
-                onClick={() => handleOpenSourceFromCitation(selectedCitation)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-neutral-800 bg-neutral-100 hover:bg-neutral-200 rounded-lg transition cursor-pointer disabled:opacity-50"
+                onClick={() => handleCitationClick(selectedCitation)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-neutral-800 bg-neutral-100 hover:bg-neutral-200 rounded-lg transition cursor-pointer"
               >
                 {isLoadingSourceModal ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />

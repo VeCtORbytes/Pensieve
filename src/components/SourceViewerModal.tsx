@@ -92,10 +92,18 @@ export default function SourceViewerModal({
     };
   }, [source.id]);
 
-  // Load the selected rendering. ORIGINAL is a plain read; ENGLISH and ROMANIZED
-  // are generated on first request and cached server-side.
+  // Load the selected rendering. ORIGINAL uses stored rawText directly (0ms latency);
+  // ENGLISH and ROMANIZED are fetched/generated on first request.
   useEffect(() => {
     let cancelled = false;
+
+    if (variant === "ORIGINAL" && source.rawText) {
+      setVariantText(source.rawText);
+      setVariantSpans(null);
+      setVariantLoading(false);
+      setVariantError(null);
+      return;
+    }
 
     (async () => {
       setVariantLoading(true);
@@ -112,19 +120,17 @@ export default function SourceViewerModal({
         if (cancelled) return;
 
         if (!res.ok) {
-          setVariantText(null);
+          setVariantText(source.rawText ?? null);
           setVariantSpans(null);
-          // ORIGINAL falls back to the source's own stored text silently; a
-          // failed translation is worth surfacing.
           setVariantError(variant === "ORIGINAL" ? null : data?.error || "Could not load");
           return;
         }
 
-        setVariantText(typeof data?.rawText === "string" ? data.rawText : null);
+        setVariantText(typeof data?.rawText === "string" ? data.rawText : source.rawText ?? null);
         setVariantSpans(Array.isArray(data?.spans) ? data.spans : null);
       } catch (err: any) {
         if (!cancelled) {
-          setVariantText(null);
+          setVariantText(source.rawText ?? null);
           setVariantSpans(null);
           setVariantError(variant === "ORIGINAL" ? null : err?.message || "Could not load");
         }
@@ -136,7 +142,7 @@ export default function SourceViewerModal({
     return () => {
       cancelled = true;
     };
-  }, [source.id, variant]);
+  }, [source.id, source.rawText, variant]);
 
   // Extract YouTube Video ID
   const youtubeVideoId = getYouTubeVideoId(source.url || source.rawText);
