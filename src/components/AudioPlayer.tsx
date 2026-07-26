@@ -67,7 +67,7 @@ export default function AudioPlayer({ audioUrl, scriptText, onClose }: AudioPlay
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 max-w-md w-full bg-white border border-[#E2E7EA] rounded-2xl shadow-2xl p-4 space-y-3 animate-in slide-in-from-bottom duration-200">
+    <div className="fixed bottom-6 right-6 z-50 max-w-md w-full bg-white border border-rule rounded-2xl shadow-2xl p-4 space-y-3 animate-in slide-in-from-bottom duration-200">
       <audio
         ref={audioRef}
         src={audioUrl}
@@ -76,12 +76,12 @@ export default function AudioPlayer({ audioUrl, scriptText, onClose }: AudioPlay
       />
 
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-[#E2E7EA] pb-2">
+      <div className="flex items-center justify-between border-b border-rule pb-2">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-lg bg-[#3B4CC0] text-white flex items-center justify-center">
+          <div className="w-6 h-6 rounded-lg bg-accent text-white flex items-center justify-center">
             <Sparkles className="w-3.5 h-3.5" />
           </div>
-          <span className="text-xs font-serif-display font-medium text-[#141A22]">
+          <span className="text-xs font-serif-display font-medium text-ink">
             AI Audio Overview
           </span>
         </div>
@@ -99,7 +99,7 @@ export default function AudioPlayer({ audioUrl, scriptText, onClose }: AudioPlay
         <button
           type="button"
           onClick={togglePlay}
-          className="w-10 h-10 rounded-full bg-[#141A22] text-white flex items-center justify-center hover:bg-[#3B4CC0] transition shrink-0 cursor-pointer shadow-xs"
+          className="w-10 h-10 rounded-full bg-ink text-white flex items-center justify-center hover:bg-accent transition shrink-0 cursor-pointer shadow-xs"
         >
           {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
         </button>
@@ -111,7 +111,7 @@ export default function AudioPlayer({ audioUrl, scriptText, onClose }: AudioPlay
             max={duration || 100}
             value={currentTime}
             onChange={handleSeek}
-            className="w-full h-1.5 bg-neutral-200 rounded-lg appearance-none cursor-pointer accent-[#3B4CC0]"
+            className="w-full h-1.5 bg-neutral-200 rounded-lg appearance-none cursor-pointer accent-accent"
           />
           <div className="flex justify-between text-[10px] font-mono text-neutral-400">
             <span>{formatSecs(currentTime)}</span>
@@ -129,7 +129,7 @@ export default function AudioPlayer({ audioUrl, scriptText, onClose }: AudioPlay
       </div>
 
       {/* Script Text View */}
-      <div className="p-2.5 bg-[#F5F7F8] rounded-xl border border-[#E2E7EA] space-y-1 max-h-28 overflow-y-auto text-xs leading-relaxed text-neutral-700">
+      <div className="p-2.5 bg-vessel rounded-xl border border-rule space-y-1 max-h-28 overflow-y-auto text-xs leading-relaxed text-neutral-700">
         <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 flex items-center gap-1">
           <FileText className="w-3 h-3" /> Script Transcript
         </p>

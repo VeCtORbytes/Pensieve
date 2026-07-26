@@ -13,7 +13,7 @@ interface Source {
   url?: string | null;
   blobUrl?: string | null;
   rawText?: string | null;
-  status: "QUEUED" | "EXTRACTING" | "EMBEDDING" | "READY" | "FAILED";
+  status: "QUEUED" | "EXTRACTING" | "TRANSLATING" | "EMBEDDING" | "READY" | "FAILED";
   error?: string | null;
   chunkCount: number;
   createdAt: string;
@@ -264,21 +264,21 @@ export default function SourcePanel({
       }}
       onDragLeave={() => setIsDraggingOver(false)}
       onDrop={handleDrop}
-      className={`flex flex-col h-full bg-[#F5F7F8] relative transition ${
-        isDraggingOver ? "ring-2 ring-inset ring-[#3B4CC0] bg-blue-50/40" : ""
+      className={`flex flex-col h-full bg-vessel relative transition ${
+        isDraggingOver ? "ring-2 ring-inset ring-accent bg-blue-50/40" : ""
       }`}
     >
       {/* Drag Over Overlay */}
       {isDraggingOver && (
-        <div className="absolute inset-0 z-30 bg-[#3B4CC0]/10 backdrop-blur-2xs flex flex-col items-center justify-center text-center p-4">
-          <Upload className="w-8 h-8 text-[#3B4CC0] animate-bounce mb-2" />
-          <p className="text-xs font-semibold text-[#3B4CC0]">Drop files here to ingest into Pensieve</p>
+        <div className="absolute inset-0 z-30 bg-accent/10 backdrop-blur-2xs flex flex-col items-center justify-center text-center p-4">
+          <Upload className="w-8 h-8 text-accent animate-bounce mb-2" />
+          <p className="text-xs font-semibold text-accent">Drop files here to ingest into Pensieve</p>
         </div>
       )}
 
       {/* Quiet Rail Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[#E2E7EA]">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-[#141A22]/60">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-rule">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-ink/60">
           Sources ({sources.length})
         </span>
         <button
@@ -287,7 +287,7 @@ export default function SourcePanel({
             resetForm();
             setIsModalOpen(true);
           }}
-          className="p-1.5 text-xs text-[#141A22] hover:bg-[#E2E7EA] rounded-lg transition cursor-pointer"
+          className="p-1.5 text-xs text-ink hover:bg-rule rounded-lg transition cursor-pointer"
           title="Add Source"
         >
           <Plus className="w-4 h-4" />
@@ -311,15 +311,17 @@ export default function SourcePanel({
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 truncate flex-1">
                   <StatusDot status={s.status} />
-                  <span className="font-medium text-[#141A22] truncate group-hover:text-[#3B4CC0]">
+                  <span className="font-medium text-ink truncate group-hover:text-accent">
                     {s.title}
                   </span>
                 </div>
 
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                {/* Always visible on touch, where there is no hover to reveal them. */}
+                <div className="flex items-center gap-1 transition md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100">
                   <button
                     type="button"
-                    title="Re-index Source"
+                    title="Re-index source"
+                    aria-label={`Re-index ${s.title}`}
                     disabled={actionSourceId === s.id}
                     onClick={(e) => handleReindexSource(e, s.id)}
                     className="p-1 text-neutral-400 hover:text-neutral-700 rounded transition cursor-pointer"
@@ -328,7 +330,8 @@ export default function SourcePanel({
                   </button>
                   <button
                     type="button"
-                    title="Delete Source"
+                    title="Delete source"
+                    aria-label={`Delete ${s.title}`}
                     disabled={actionSourceId === s.id}
                     onClick={(e) => handleDeleteSource(e, s.id)}
                     className="p-1 text-neutral-400 hover:text-red-600 rounded transition cursor-pointer"
@@ -338,9 +341,13 @@ export default function SourcePanel({
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-[10px] text-neutral-400 font-mono pl-3.5">
+              <div className="flex items-center justify-between gap-2 text-[10px] text-neutral-400 font-mono pl-3.5">
                 <span className="uppercase">{s.type}</span>
-                <span>{s.status === "READY" ? `${s.chunkCount} chunks` : s.status.toLowerCase()}</span>
+                <span className="shrink-0">
+                  {s.status === "READY"
+                    ? `${s.chunkCount} ${s.chunkCount === 1 ? "chunk" : "chunks"}`
+                    : s.status.toLowerCase()}
+                </span>
               </div>
             </div>
           ))
@@ -359,6 +366,7 @@ export default function SourcePanel({
             rawText: selectedViewerSource.rawText,
             createdAt: selectedViewerSource.createdAt,
           }}
+          notebookId={notebookId}
           onClose={() => setSelectedViewerSource(null)}
         />
       )}
@@ -366,9 +374,9 @@ export default function SourcePanel({
       {/* Add Source Modal Dialog */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-xl max-w-xl w-full p-6 shadow-2xl space-y-5 border border-[#E2E7EA]">
-            <div className="flex items-center justify-between border-b border-[#E2E7EA] pb-3">
-              <h3 className="text-base font-serif-display font-normal text-[#141A22]">Add Knowledge Source</h3>
+          <div className="bg-white rounded-xl max-w-xl w-full p-6 shadow-2xl space-y-5 border border-rule">
+            <div className="flex items-center justify-between border-b border-rule pb-3">
+              <h3 className="text-base font-serif-display font-normal text-ink">Add Knowledge Source</h3>
               <button
                 type="button"
                 onClick={handleCloseModal}
@@ -379,7 +387,7 @@ export default function SourcePanel({
             </div>
 
             {/* Tab navigation */}
-            <div className="flex border-b border-[#E2E7EA] text-xs overflow-x-auto">
+            <div className="flex border-b border-rule text-xs overflow-x-auto">
               {[
                 { id: "text", label: "Text", icon: FileText },
                 { id: "pdf", label: "PDF", icon: File },
@@ -398,8 +406,8 @@ export default function SourcePanel({
                     }}
                     className={`flex items-center gap-1.5 px-3 py-2 border-b-2 font-medium transition whitespace-nowrap cursor-pointer ${
                       activeTab === tab.id
-                        ? "border-[#3B4CC0] text-[#3B4CC0]"
-                        : "border-transparent text-neutral-500 hover:text-[#141A22]"
+                        ? "border-accent text-accent"
+                        : "border-transparent text-neutral-500 hover:text-ink"
                     }`}
                   >
                     <Icon className="w-3.5 h-3.5" />
@@ -420,7 +428,7 @@ export default function SourcePanel({
                   placeholder="e.g. Technical Manual / Lecture Video"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-[#E2E7EA] rounded-lg outline-none focus:ring-2 focus:ring-[#3B4CC0]"
+                  className="w-full px-3 py-2 text-xs border border-rule rounded-lg outline-none focus:ring-2 focus:ring-accent"
                 />
               </div>
 
@@ -452,7 +460,7 @@ export default function SourcePanel({
                     placeholder="https://example.com/article"
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-[#E2E7EA] rounded-lg outline-none focus:ring-2 focus:ring-[#3B4CC0]"
+                    className="w-full px-3 py-2 text-xs border border-rule rounded-lg outline-none focus:ring-2 focus:ring-accent"
                   />
                 </div>
               )}
@@ -469,7 +477,7 @@ export default function SourcePanel({
                     placeholder="https://www.youtube.com/watch?v=..."
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-[#E2E7EA] rounded-lg outline-none focus:ring-2 focus:ring-[#3B4CC0]"
+                    className="w-full px-3 py-2 text-xs border border-rule rounded-lg outline-none focus:ring-2 focus:ring-accent"
                   />
                 </div>
               )}
@@ -501,7 +509,7 @@ export default function SourcePanel({
                     placeholder="Paste text or notes..."
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
-                    className="w-full px-3 py-2 text-xs font-mono border border-[#E2E7EA] rounded-lg outline-none focus:ring-2 focus:ring-[#3B4CC0]"
+                    className="w-full px-3 py-2 text-xs font-mono border border-rule rounded-lg outline-none focus:ring-2 focus:ring-accent"
                   />
                 </div>
               )}
@@ -521,7 +529,7 @@ export default function SourcePanel({
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-white bg-[#141A22] hover:bg-[#3B4CC0] rounded-lg disabled:opacity-50 cursor-pointer transition"
+                  className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-white bg-ink hover:bg-accent rounded-lg disabled:opacity-50 cursor-pointer transition"
                 >
                   {isSubmitting ? (
                     <>
@@ -542,7 +550,7 @@ export default function SourcePanel({
 
 function StatusDot({ status }: { status: Source["status"] }) {
   if (status === "READY") {
-    return <span className="w-2 h-2 rounded-full bg-[#1D9E75] shrink-0" title="Ready" />;
+    return <span className="w-2 h-2 rounded-full bg-accent shrink-0" title="Ready" />;
   }
   if (status === "FAILED") {
     return <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" title="Failed" />;

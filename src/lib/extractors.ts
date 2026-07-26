@@ -2,34 +2,38 @@ import { extractText } from "unpdf";
 import * as cheerio from "cheerio";
 import { YoutubeTranscript } from "youtube-transcript";
 import { Extraction, Locator, Segment } from "./locator";
+import { assembleVariant } from "./segments";
+import { normalizeLanguageCode } from "./language";
 
 /**
- * Assembles rawText and segments with exact charStart and charEnd boundaries by construction.
+ * Assembles rawText and segments with exact charStart and charEnd boundaries by
+ * construction, numbering each segment. The ordinals become the anchor that
+ * joins this text to its translated variants, so they must be assigned here —
+ * once, over the surviving (non-empty) parts.
  */
 function assemble(
-  parts: { text: string; meta: Omit<Locator, "charStart" | "charEnd"> }[]
+  parts: { text: string; meta: Omit<Locator, "charStart" | "charEnd"> }[],
+  language?: string
 ): Extraction {
-  const segments: Segment[] = [];
-  let raw = "";
+  const kept = parts
+    .map((part) => ({ ...part, text: part.text.trim() }))
+    .filter((part) => part.text.length > 0);
 
-  for (const p of parts) {
-    const cleanText = p.text.trim();
-    if (!cleanText) continue;
+  const { rawText, spans } = assembleVariant(kept.map((part) => part.text));
 
-    const charStart = raw.length;
-    raw += cleanText + "\n\n";
+  const segments: Segment[] = kept.map((part, index) => ({
+    text: part.text,
+    index,
+    locator: {
+      ...part.meta,
+      charStart: spans[index][0],
+      charEnd: spans[index][1],
+      segStart: index,
+      segEnd: index,
+    },
+  }));
 
-    segments.push({
-      text: cleanText,
-      locator: {
-        ...p.meta,
-        charStart,
-        charEnd: charStart + cleanText.length,
-      },
-    });
-  }
-
-  return { rawText: raw.trimEnd(), segments };
+  return { rawText, segments, language };
 }
 
 /**
@@ -122,20 +126,26 @@ export async function extractYoutube(url: string): Promise<Extraction> {
   let transcript: any[] = [];
 
   try {
-    // Attempt English captions first
-    transcript = await YoutubeTranscript.fetchTranscript(url, { lang: "en" });
-  } catch (e1) {
+    // Take the video's own default caption track, so a Hindi video is ingested
+    // as Hindi. Asking for English first would hide the original language behind
+    // YouTube's auto-translation and lose the source wording entirely.
+    transcript = await YoutubeTranscript.fetchTranscript(url);
+  } catch (primaryErr: any) {
     try {
-      // Fallback to default captions
-      transcript = await YoutubeTranscript.fetchTranscript(url);
-    } catch (e2: any) {
-      throw new Error(e2.message || "Could not retrieve transcript for YouTube video.");
+      transcript = await YoutubeTranscript.fetchTranscript(url, { lang: "en" });
+    } catch {
+      throw new Error(
+        primaryErr?.message || "Could not retrieve transcript for YouTube video."
+      );
     }
   }
 
   if (!transcript || transcript.length === 0) {
     throw new Error("No captions or transcript found for this YouTube video.");
   }
+
+  // youtube-transcript reports the resolved track's language on each cue.
+  const trackLanguage = normalizeLanguageCode(transcript.find((item) => item?.lang)?.lang);
 
   const parts: { text: string; meta: Omit<Locator, "charStart" | "charEnd"> }[] = [];
 
@@ -158,7 +168,7 @@ export async function extractYoutube(url: string): Promise<Extraction> {
     }
   }
 
-  return assemble(parts);
+  return assemble(parts, trackLanguage ?? undefined);
 }
 
 /**

@@ -18,7 +18,21 @@ enum SourceType {
 enum SourceStatus {
   QUEUED
   EXTRACTING
+  TRANSLATING
   EMBEDDING
+  READY
+  FAILED
+}
+
+enum VariantKind {
+  ORIGINAL
+  ENGLISH
+  ROMANIZED
+}
+
+enum VariantStatus {
+  PENDING
+  GENERATING
   READY
   FAILED
 }
@@ -40,13 +54,50 @@ model Source {
   title      String
   url        String?
   blobUrl    String?
+  /// Mirrors the ORIGINAL variant's text, kept for viewers that predate variants.
   rawText    String?      @db.Text
   status     SourceStatus @default(QUEUED)
   error      String?
   chunkCount Int          @default(0)
   createdAt  DateTime     @default(now())
 
+  /// BCP-47 tag of the source's own language, e.g. "hi".
+  language    String?
+  /// Variant-invariant per-segment metadata, indexed by segment ordinal:
+  /// [{ page?, startSec?, endSec?, heading? }, ...]. Translated variants reuse it,
+  /// so a citation keeps its page number or timestamp in every language.
+  segmentMeta Json?
+
+  variants SourceVariant[]
+
   @@index([notebookId])
+}
+
+/// One language rendering of a source. Every variant holds the same segments in
+/// the same order, so segment ordinals join across variants even though each has
+/// its own character offsets.
+model SourceVariant {
+  id       String @id @default(cuid())
+  sourceId String
+  source   Source @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  kind         VariantKind
+  /// BCP-47 tag of this rendering's text ("en" for ENGLISH, source lang otherwise).
+  language     String?
+  rawText      String      @db.Text
+  /// [[charStart, charEnd], ...] per segment ordinal, into this variant's rawText.
+  segmentSpans Json
+
+  status  VariantStatus @default(READY)
+  /// True once this variant's chunks are embedded in Qdrant.
+  indexed Boolean       @default(false)
+  error   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([sourceId, kind])
+  @@index([sourceId])
 }
 
 model Message {

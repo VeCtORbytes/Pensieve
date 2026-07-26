@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { ArrowLeft, Trash2, Volume2, Search, Loader2, Sparkles } from "lucide-react";
+import { ArrowLeft, Trash2, Volume2, Search, Loader2 } from "lucide-react";
 import { renameNotebook, deleteNotebook } from "@/app/actions/notebooks";
 import AudioPlayer from "@/components/AudioPlayer";
 import CommandPalette from "@/components/CommandPalette";
@@ -66,30 +66,51 @@ export default function NotebookHeader({
 
   return (
     <>
-      <header className="flex items-center gap-3 border-b border-[#E2E7EA] px-5 py-3 bg-[#F5F7F8]">
-        <Link href="/" className="text-neutral-400 hover:text-[#141A22] transition">
+      <header className="flex items-center gap-2 border-b border-rule bg-vessel px-3 py-2.5 sm:gap-3 sm:px-5 sm:py-3">
+        <Link
+          href="/"
+          aria-label="Back to all notebooks"
+          className="shrink-0 rounded-lg p-1.5 text-neutral-400 transition hover:bg-white/70 hover:text-ink"
+        >
           <ArrowLeft className="h-4 w-4" />
         </Link>
 
-        <input
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onBlur={save}
-          onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-          className="flex-1 rounded px-2 py-1 text-base font-serif-display font-normal text-[#141A22] outline-none hover:bg-white/60 focus:bg-white border border-transparent focus:border-[#E2E7EA] transition"
-        />
-
-        {isPending && <span className="text-xs font-mono text-neutral-400">Saving…</span>}
+        {/*
+          Sized to its content rather than filling the header. As a full-width
+          borderless input it looked like a search box and swallowed stray
+          keystrokes, which is how notebooks ended up with mangled titles.
+        */}
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <input
+            value={value}
+            aria-label="Notebook title"
+            onChange={(e) => setValue(e.target.value)}
+            onBlur={save}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.currentTarget.blur();
+              if (e.key === "Escape") {
+                setValue(title);
+                e.currentTarget.blur();
+              }
+            }}
+            className="w-full max-w-[min(28ch,100%)] truncate rounded-lg border border-transparent bg-transparent px-2 py-1 font-serif-display text-base font-normal text-ink outline-none transition hover:border-rule hover:bg-white/70 focus:border-rule focus:bg-white sm:max-w-[40ch]"
+          />
+          {isPending && (
+            <span className="hidden shrink-0 font-mono text-xs text-neutral-400 sm:inline">
+              Saving…
+            </span>
+          )}
+        </div>
 
         {/* Command Palette Trigger */}
         <button
           type="button"
           onClick={() => setIsCmdPaletteOpen(true)}
-          className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-white border border-[#E2E7EA] hover:border-[#3B4CC0] rounded-xl text-xs font-mono text-neutral-500 transition cursor-pointer shadow-2xs"
+          className="hidden shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border border-rule bg-white px-3 py-1.5 font-mono text-xs text-neutral-500 shadow-2xs transition hover:border-accent md:flex"
         >
-          <Search className="w-3.5 h-3.5 text-neutral-400" />
+          <Search className="h-3.5 w-3.5 text-neutral-400" />
           <span>Search</span>
-          <kbd className="bg-[#F5F7F8] border border-[#E2E7EA] px-1 rounded text-[10px]">⌘K</kbd>
+          <kbd className="rounded border border-rule bg-vessel px-1 text-[10px]">⌘K</kbd>
         </button>
 
         {/* Audio Overview Button */}
@@ -97,17 +118,18 @@ export default function NotebookHeader({
           type="button"
           disabled={isGeneratingAudio}
           onClick={handleGenerateAudioOverview}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#141A22] hover:bg-[#3B4CC0] text-white rounded-xl text-xs font-semibold transition cursor-pointer disabled:opacity-50 shadow-xs"
+          aria-label="Generate audio overview"
+          className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl bg-ink px-3 py-1.5 text-xs font-semibold text-white shadow-xs transition hover:bg-accent disabled:opacity-50 sm:px-3.5"
         >
           {isGeneratingAudio ? (
             <>
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              <span>Generating Audio...</span>
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <span className="hidden sm:inline">Generating Audio...</span>
             </>
           ) : (
             <>
-              <Volume2 className="w-3.5 h-3.5 text-amber-300" />
-              <span>Audio Overview</span>
+              <Volume2 className="h-3.5 w-3.5 text-amber-300" />
+              <span className="hidden sm:inline">Audio Overview</span>
             </>
           )}
         </button>
@@ -117,7 +139,8 @@ export default function NotebookHeader({
           type="button"
           onClick={remove}
           aria-label="Delete notebook"
-          className="text-neutral-400 hover:text-red-600 transition cursor-pointer p-1.5 rounded-lg hover:bg-red-50"
+          title="Delete notebook"
+          className="shrink-0 cursor-pointer rounded-lg p-1.5 text-neutral-400 transition hover:bg-red-50 hover:text-red-600"
         >
           <Trash2 className="h-4 w-4" />
         </button>
@@ -152,6 +175,7 @@ export default function NotebookHeader({
             rawText: selectedViewerSource.rawText,
             createdAt: selectedViewerSource.createdAt,
           }}
+          notebookId={id}
           onClose={() => setSelectedViewerSource(null)}
         />
       )}

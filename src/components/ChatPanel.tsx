@@ -15,6 +15,11 @@ import {
 import { CitationPayload, RetrievalTracePayload } from "@/app/api/chat/route";
 import SourceViewerModal from "@/components/SourceViewerModal";
 import RetrievalTrace from "@/components/RetrievalTrace";
+import { VariantKind } from "@/lib/locator";
+import { useReadingVariant } from "@/hooks/useReadingVariant";
+import { Languages, PanelLeft } from "lucide-react";
+
+type LanguageOption = { kind: VariantKind; label: string };
 
 interface MessageItem {
   id: string;
@@ -33,7 +38,17 @@ interface DBMessage {
   createdAt: string;
 }
 
-export default function ChatPanel({ notebookId }: { notebookId: string }) {
+export default function ChatPanel({
+  notebookId,
+  sourceCount,
+  onOpenSources,
+}: {
+  notebookId: string;
+  /** Shown on the mobile sources trigger. */
+  sourceCount?: number;
+  /** Provided by the workspace to open the rail drawer below `md`. */
+  onOpenSources?: () => void;
+}) {
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -42,7 +57,36 @@ export default function ChatPanel({ notebookId }: { notebookId: string }) {
   const [targetViewerSource, setTargetViewerSource] = useState<any | null>(null);
   const [isLoadingSourceModal, setIsLoadingSourceModal] = useState(false);
 
+  // Reading language, shared with the source viewer. Answers come back in it.
+  // Until the reader picks one, the server infers it from the question.
+  const { variant, isExplicit, select: selectVariant, reset: resetVariant } =
+    useReadingVariant(notebookId);
+  const [languageOptions, setLanguageOptions] = useState<LanguageOption[]>([]);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Only offer a language switcher when the notebook actually has a non-English
+  // source to switch between.
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res = await fetch(`/api/notebooks/${notebookId}/languages`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && Array.isArray(data?.options) && data.options.length > 1) {
+          setLanguageOptions(data.options);
+        }
+      } catch {
+        /* switcher stays hidden */
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [notebookId]);
 
   async function handleOpenSourceFromCitation(citation: CitationPayload) {
     try {
@@ -57,7 +101,8 @@ export default function ChatPanel({ notebookId }: { notebookId: string }) {
           setTargetViewerSource({
             id: citation.sourceId,
             title: citation.title,
-            type: "TEXT",
+            type: "YOUTUBE",
+            url: citation.locator?.startSec ? `https://www.youtube.com/watch?v=preview` : undefined,
             rawText: citation.text,
           });
         }
@@ -67,6 +112,11 @@ export default function ChatPanel({ notebookId }: { notebookId: string }) {
     } finally {
       setIsLoadingSourceModal(false);
     }
+  }
+
+  function handleCitationClick(citation: CitationPayload) {
+    setSelectedCitation(citation);
+    handleOpenSourceFromCitation(citation);
   }
 
   // Load chat history from PostgreSQL
@@ -129,6 +179,9 @@ export default function ChatPanel({ notebookId }: { notebookId: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           notebookId,
+          // Omitted unless the reader chose a language, so the server can match
+          // the question's language instead.
+          variant: isExplicit ? variant : undefined,
           messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
         }),
       });
@@ -233,20 +286,77 @@ export default function ChatPanel({ notebookId }: { notebookId: string }) {
   return (
     <div className="flex flex-col h-full bg-white relative overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 bg-white">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-neutral-900 text-white flex items-center justify-center shadow-xs">
-            <Sparkles className="w-4 h-4" />
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-200 bg-white px-4 py-3 md:px-6 md:py-4">
+        <div className="flex min-w-0 items-center gap-2.5">
+          {onOpenSources && (
+            <button
+              type="button"
+              onClick={onOpenSources}
+              aria-label={`Show sources${sourceCount ? ` (${sourceCount})` : ""}`}
+              className="flex shrink-0 items-center gap-1 rounded-lg border border-neutral-200 px-2 py-1.5 text-[11px] font-medium text-neutral-600 transition hover:bg-neutral-50 md:hidden"
+            >
+              <PanelLeft className="h-3.5 w-3.5" />
+              {sourceCount ?? ""}
+            </button>
+          )}
+
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-ink text-white shadow-xs">
+            <Sparkles className="h-4 w-4" />
           </div>
-          <div>
-            <h2 className="text-sm font-semibold text-neutral-900">Pensieve AI Assistant</h2>
-            <p className="text-[11px] text-neutral-400">Answers drawn only from your sources</p>
+          <div className="min-w-0">
+            <h2 className="truncate text-sm font-semibold text-neutral-900">
+              Pensieve AI Assistant
+            </h2>
+            <p className="hidden text-[11px] text-neutral-400 sm:block">
+              Answers drawn only from your sources
+            </p>
           </div>
         </div>
+
+        {languageOptions.length > 1 && (
+          <div className="flex min-w-0 items-center gap-1.5">
+            <Languages className="hidden h-3.5 w-3.5 shrink-0 text-neutral-400 sm:block" />
+            <div className="flex max-w-full overflow-x-auto rounded-lg bg-neutral-100 p-0.5 text-[11px] font-medium">
+              {/* Auto follows the language of each question. */}
+              <button
+                type="button"
+                onClick={resetVariant}
+                title="Answer in whatever language the question is asked in"
+                aria-pressed={!isExplicit}
+                className={`shrink-0 rounded-md px-2.5 py-1 transition ${
+                  !isExplicit
+                    ? "bg-white text-neutral-900 shadow-xs"
+                    : "text-neutral-500 hover:text-neutral-900"
+                }`}
+              >
+                Auto
+              </button>
+              {languageOptions.map((option) => {
+                const active = isExplicit && option.kind === variant;
+                return (
+                  <button
+                    key={option.kind}
+                    type="button"
+                    onClick={() => selectVariant(option.kind)}
+                    title={`Read sources and get answers in ${option.label}`}
+                    aria-pressed={active}
+                    className={`shrink-0 whitespace-nowrap rounded-md px-2.5 py-1 transition ${
+                      active
+                        ? "bg-white text-neutral-900 shadow-xs"
+                        : "text-neutral-500 hover:text-neutral-900"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Messages Scroll Area */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 space-y-6 overflow-y-auto p-4 md:p-6">
         {isLoadingHistory ? (
           <div className="flex items-center justify-center h-full text-neutral-400 gap-2">
             <Loader2 className="w-5 h-5 animate-spin" />
@@ -292,21 +402,24 @@ export default function ChatPanel({ notebookId }: { notebookId: string }) {
             return (
               <div
                 key={m.id}
-                className={`flex gap-3 max-w-3xl ${isUser ? "ml-auto flex-row-reverse" : ""}`}
+                className={`flex max-w-3xl gap-2.5 md:gap-3 ${
+                  isUser ? "ml-auto flex-row-reverse" : ""
+                }`}
               >
                 {/* Avatar */}
                 <div
-                  className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-xs font-semibold ${
-                    isUser
-                      ? "bg-neutral-900 text-white"
-                      : "bg-emerald-600 text-white shadow-xs"
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-semibold ${
+                    isUser ? "bg-ink text-white" : "bg-accent text-white shadow-xs"
                   }`}
                 >
                   {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
                 </div>
 
-                {/* Message Content */}
-                <div className={`space-y-3 max-w-[85%] ${isUser ? "items-end" : ""}`}>
+                {/* min-w-0 lets the bubble shrink and wrap on narrow screens;
+                    max-w keeps it sized to its content instead of stretching. */}
+                <div
+                  className={`min-w-0 max-w-[85%] space-y-3 ${isUser ? "items-end" : ""}`}
+                >
                   {/* Retrieval Trace Component above assistant answer */}
                   {!isUser && m.trace && (
                     <RetrievalTrace trace={m.trace} isStreaming={isLoading && !m.content} />
@@ -314,16 +427,16 @@ export default function ChatPanel({ notebookId }: { notebookId: string }) {
 
                   {m.content && (
                     <div
-                      className={`p-4 rounded-2xl text-xs leading-relaxed ${
+                      className={`overflow-hidden break-words rounded-2xl p-3.5 text-xs leading-relaxed md:p-4 ${
                         isUser
-                          ? "bg-neutral-900 text-white rounded-tr-none"
-                          : "bg-neutral-100/80 text-neutral-800 rounded-tl-none border border-neutral-200/60"
+                          ? "rounded-tr-none bg-ink text-white"
+                          : "rounded-tl-none border border-neutral-200/60 bg-neutral-100/80 text-neutral-800"
                       }`}
                     >
                       {isUser ? (
                         <div className="whitespace-pre-wrap">{m.content}</div>
                       ) : (
-                        renderProseWithInlineCitations(m.content, m.citations, (c) => setSelectedCitation(c))
+                        renderProseWithInlineCitations(m.content, m.citations, (c) => handleCitationClick(c))
                       )}
                     </div>
                   )}
@@ -341,7 +454,7 @@ export default function ChatPanel({ notebookId }: { notebookId: string }) {
                           <button
                             key={c.number}
                             type="button"
-                            onClick={() => setSelectedCitation(c)}
+                            onClick={() => handleCitationClick(c)}
                             className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium bg-white hover:bg-neutral-50 border border-neutral-200 rounded-lg shadow-xs text-neutral-700 hover:border-neutral-400 transition cursor-pointer"
                           >
                             <span className="font-semibold text-emerald-700 bg-emerald-50 px-1 rounded">
@@ -396,8 +509,9 @@ export default function ChatPanel({ notebookId }: { notebookId: string }) {
         </form>
       </div>
 
-      {/* Citation Detail Modal */}
-      {selectedCitation && (
+      {/* Citation Detail Modal. Hidden while the full source viewer is open so
+          the two overlays never stack. */}
+      {selectedCitation && !targetViewerSource && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
           <div className="bg-white rounded-xl max-w-lg w-full p-6 shadow-2xl space-y-4 border border-neutral-200">
             <div className="flex items-start justify-between border-b border-neutral-100 pb-3">
@@ -432,7 +546,7 @@ export default function ChatPanel({ notebookId }: { notebookId: string }) {
               </div>
             </div>
 
-            <div className="flex justify-between items-center pt-2 border-t border-neutral-100">
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-neutral-100">
               <button
                 type="button"
                 disabled={isLoadingSourceModal}
@@ -471,8 +585,15 @@ export default function ChatPanel({ notebookId }: { notebookId: string }) {
             rawText: targetViewerSource.rawText,
             createdAt: targetViewerSource.createdAt,
           }}
+          notebookId={notebookId}
           locator={selectedCitation?.locator || null}
-          onClose={() => setTargetViewerSource(null)}
+          locatorVariant={selectedCitation?.variant}
+          onClose={() => {
+            // Clear the citation too, or closing the viewer would re-reveal the
+            // preview the reader already dismissed by drilling in.
+            setTargetViewerSource(null);
+            setSelectedCitation(null);
+          }}
         />
       )}
     </div>

@@ -62,9 +62,9 @@ export default function CommandPalette({
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 backdrop-blur-xs pt-20 p-4">
-      <div className="bg-white rounded-2xl max-w-xl w-full shadow-2xl overflow-hidden border border-[#E2E7EA] animate-in fade-in zoom-in-95 duration-150">
+      <div className="bg-white rounded-2xl max-w-xl w-full shadow-2xl overflow-hidden border border-rule animate-in fade-in zoom-in-95 duration-150">
         {/* Search Bar */}
-        <div className="flex items-center px-4 border-b border-[#E2E7EA]">
+        <div className="flex items-center px-4 border-b border-rule">
           <Search className="w-4 h-4 text-neutral-400 shrink-0" />
           <input
             autoFocus
@@ -72,7 +72,7 @@ export default function CommandPalette({
             placeholder="Search sources or select starter prompt (ESC to close)..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full px-3 py-3.5 text-xs bg-transparent outline-none text-[#141A22] placeholder-neutral-400"
+            className="w-full px-3 py-3.5 text-xs bg-transparent outline-none text-ink placeholder-neutral-400"
           />
           <button
             type="button"
@@ -99,11 +99,11 @@ export default function CommandPalette({
                     if (onSelectSource) onSelectSource(s);
                     onClose();
                   }}
-                  className="w-full text-left p-2.5 rounded-xl hover:bg-[#F5F7F8] flex items-center justify-between text-xs transition cursor-pointer group"
+                  className="w-full text-left p-2.5 rounded-xl hover:bg-vessel flex items-center justify-between text-xs transition cursor-pointer group"
                 >
                   <div className="flex items-center gap-2.5 truncate">
                     <TypeIcon type={s.type} />
-                    <span className="font-medium text-[#141A22] group-hover:text-[#3B4CC0] truncate">
+                    <span className="font-medium text-ink group-hover:text-accent truncate">
                       {s.title}
                     </span>
                   </div>
@@ -129,10 +129,10 @@ export default function CommandPalette({
                     if (onSelectPrompt) onSelectPrompt(p);
                     onClose();
                   }}
-                  className="w-full text-left p-2.5 rounded-xl hover:bg-[#F5F7F8] flex items-center justify-between text-xs text-neutral-700 transition cursor-pointer group"
+                  className="w-full text-left p-2.5 rounded-xl hover:bg-vessel flex items-center justify-between text-xs text-neutral-700 transition cursor-pointer group"
                 >
                   <span>{p}</span>
-                  <ArrowRight className="w-3.5 h-3.5 text-neutral-400 group-hover:text-[#3B4CC0] transition" />
+                  <ArrowRight className="w-3.5 h-3.5 text-neutral-400 group-hover:text-accent transition" />
                 </button>
               ))}
             </div>

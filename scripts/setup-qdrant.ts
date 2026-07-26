@@ -1,58 +1,26 @@
 import "dotenv/config";
-import { QdrantClient } from "@qdrant/js-client-rest";
+import { ensureCollection, NOTEBOOK_COLLECTION_NAME } from "../src/lib/qdrant";
+import { EMBEDDING_MODEL, EMBEDDING_DIMENSIONS } from "../src/lib/embeddings";
 
-const QDRANT_URL = process.env.QDRANT_URL || "http://localhost:6333";
-const QDRANT_API_KEY = process.env.QDRANT_API_KEY || undefined;
-const COLLECTION_NAME = "notebook_chunks";
+/**
+ * Provisions the Qdrant collection ahead of time. The app also calls
+ * ensureCollection() on its own during ingestion and search, so this script is
+ * a convenience rather than a prerequisite.
+ */
+async function main() {
+  const url = process.env.QDRANT_URL || "http://localhost:6333";
+  console.log(`Connecting to Qdrant at ${url}...`);
 
-async function createQdrantCollection() {
-  console.log(`Connecting to Qdrant at ${QDRANT_URL}...`);
-  const client = new QdrantClient({
-    url: QDRANT_URL,
-    apiKey: QDRANT_API_KEY,
-  });
+  await ensureCollection();
 
-  try {
-    const collections = await client.getCollections();
-    const exists = collections.collections.some((c) => c.name === COLLECTION_NAME);
-
-    if (exists) {
-      console.log(`Collection "${COLLECTION_NAME}" already exists.`);
-    } else {
-      console.log(`Creating collection "${COLLECTION_NAME}"...`);
-      await client.createCollection(COLLECTION_NAME, {
-        vectors: {
-          size: 1536, // Standard embedding dimension (OpenAI / text-embedding-3-small)
-          distance: "Cosine",
-        },
-      });
-      console.log(`Collection "${COLLECTION_NAME}" created successfully.`);
-    }
-
-    console.log("Ensuring payload index for notebookId...");
-    try {
-      await client.createPayloadIndex(COLLECTION_NAME, {
-        field_name: "notebookId",
-        field_schema: "keyword",
-      });
-      console.log("Payload index for notebookId ensured.");
-    } catch (idxErr: any) {
-      console.log("Payload index notice:", idxErr.message || idxErr);
-    }
-
-    try {
-      await client.createPayloadIndex(COLLECTION_NAME, {
-        field_name: "sourceId",
-        field_schema: "keyword",
-      });
-      console.log("Payload index for sourceId ensured.");
-    } catch (idxErr: any) {
-      console.log("Payload index notice:", idxErr.message || idxErr);
-    }
-  } catch (error) {
-    console.error("Error setting up Qdrant collection:", error);
-    process.exit(1);
-  }
+  console.log(
+    `Collection "${NOTEBOOK_COLLECTION_NAME}" is ready ` +
+      `(${EMBEDDING_DIMENSIONS}-dim Cosine, for ${EMBEDDING_MODEL}).`
+  );
+  console.log("Payload indexes ensured for: notebookId, sourceId.");
 }
 
-createQdrantCollection();
+main().catch((error) => {
+  console.error("Error setting up Qdrant collection:", error);
+  process.exit(1);
+});
