@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { qdrant, NOTEBOOK_COLLECTION_NAME } from "@/lib/qdrant";
-import { cleanVtt, chunkSegments } from "@/lib/chunking";
+import { chunkSegments } from "@/lib/chunking";
 import { generateEmbeddings } from "@/lib/embeddings";
-import { extractPdf, extractWebsite, extractYoutube, ExtractionResult } from "@/lib/extractors";
+import {
+  extractPdf,
+  extractWebsite,
+  extractYoutube,
+  extractVtt,
+  extractPlainText,
+} from "@/lib/extractors";
+import { Extraction } from "@/lib/locator";
 import { SourceType } from "@prisma/client";
 import crypto from "crypto";
 
@@ -40,7 +47,7 @@ export async function POST(req: NextRequest) {
     const sourceType = (type as string).toUpperCase() as SourceType;
     const sourceContent = content || url || "";
 
-    // 1. Initial State: QUEUED (Store blobUrl if PDF data URL)
+    // 1. Initial State: QUEUED (Store blobUrl Data URL for PDF)
     const source = await db.source.create({
       data: {
         notebookId,
@@ -53,7 +60,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Execute background ingestion pipeline
+    // Execute background ingestion pipeline safely
     processSourceInline(source.id, sourceType, sourceContent, notebookId).catch((err) => {
       console.error(`Background ingestion error for source ${source.id}:`, err);
     });
@@ -68,7 +75,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Re-index / Re-trigger Ingestion Endpoint
+// Re-index endpoint: Delete vectors, re-chunk from stored rawText/blobUrl, re-embed
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
@@ -124,7 +131,7 @@ export async function DELETE(req: NextRequest) {
         },
       });
     } catch (qErr) {
-      console.warn("Notice: Failed to delete points from Qdrant (might not exist):", qErr);
+      console.warn("Notice: Failed to delete points from Qdrant:", qErr);
     }
 
     // 2. Delete source record from PostgreSQL
@@ -150,43 +157,40 @@ async function processSourceInline(
       data: { status: "EXTRACTING" },
     });
 
-    let extractionResult: ExtractionResult = { fullText: "", segments: [] };
+    let extraction: Extraction;
 
     if (type === "PDF") {
       const base64Data = rawContent.includes(",") ? rawContent.split(",")[1] : rawContent;
       const pdfUint8Array = new Uint8Array(Buffer.from(base64Data, "base64"));
-      extractionResult = await extractPdf(pdfUint8Array);
+      extraction = await extractPdf(pdfUint8Array);
     } else if (type === "WEBSITE") {
-      extractionResult = await extractWebsite(rawContent);
+      extraction = await extractWebsite(rawContent);
     } else if (type === "YOUTUBE") {
       if (rawContent.startsWith("http://") || rawContent.startsWith("https://")) {
-        extractionResult = await extractYoutube(rawContent);
+        extraction = await extractYoutube(rawContent);
       } else {
-        extractionResult = cleanVtt(rawContent);
+        extraction = extractVtt(rawContent);
       }
     } else if (type === "TRANSCRIPT") {
-      extractionResult = cleanVtt(rawContent);
+      extraction = extractVtt(rawContent);
     } else {
       // TEXT
-      extractionResult = {
-        fullText: rawContent,
-        segments: [{ text: rawContent, charStart: 0, charEnd: rawContent.length }],
-      };
+      extraction = extractPlainText(rawContent);
     }
 
-    const { fullText } = extractionResult;
+    const { rawText, segments } = extraction;
 
-    if (!fullText || !fullText.trim()) {
+    if (!rawText || !rawText.trim()) {
       throw new Error(`Failed to extract text from ${type} source content.`);
     }
 
-    // Phase 2: EMBEDDING
+    // Phase 2: EMBEDDING (Save rawText as coordinate system)
     await db.source.update({
       where: { id: sourceId },
-      data: { status: "EMBEDDING", rawText: fullText },
+      data: { status: "EMBEDDING", rawText },
     });
 
-    const chunks = chunkSegments(extractionResult, 800, 100);
+    const chunks = chunkSegments(segments, 900);
 
     if (chunks.length > 0) {
       const chunkTexts = chunks.map((c) => c.text);
@@ -198,6 +202,7 @@ async function processSourceInline(
         payload: {
           sourceId,
           notebookId,
+          sourceType: type,
           text: chunk.text,
           chunkIndex: chunk.chunkIndex,
           locator: chunk.locator,

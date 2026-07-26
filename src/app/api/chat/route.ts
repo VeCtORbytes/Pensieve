@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { qdrant, NOTEBOOK_COLLECTION_NAME } from "@/lib/qdrant";
 import { generateEmbeddings } from "@/lib/embeddings";
-import { ChunkLocator } from "@/lib/chunking";
+import { Locator } from "@/lib/locator";
 import { openai } from "@ai-sdk/openai";
 import { streamText } from "ai";
 
@@ -15,7 +15,7 @@ export interface CitationPayload {
   chunkIndex: number;
   text: string;
   score: number;
-  locator?: ChunkLocator;
+  locator?: Locator;
   humanLocator?: string;
 }
 
@@ -140,15 +140,17 @@ export async function POST(req: NextRequest) {
         citations = selectedPoints.map((p, idx) => {
           const sId = (p.payload?.sourceId as string) || "";
           const meta = titleMap.get(sId) || { title: "Untitled Source", type: "TEXT" };
-          const locator = (p.payload?.locator as ChunkLocator) || {};
+          const locator = (p.payload?.locator as Locator) || {};
 
           let humanLocator = `Chunk #${(p.payload?.chunkIndex as number) ?? idx}`;
           if (locator.page) {
             humanLocator = `Page ${locator.page}`;
-          } else if (locator.timestamp !== undefined && locator.timestamp !== null) {
-            const mins = Math.floor(locator.timestamp / 60);
-            const secs = (locator.timestamp % 60).toString().padStart(2, "0");
+          } else if (locator.startSec !== undefined && locator.startSec !== null) {
+            const mins = Math.floor(locator.startSec / 60);
+            const secs = (locator.startSec % 60).toString().padStart(2, "0");
             humanLocator = `${mins}:${secs}`;
+          } else if (locator.heading) {
+            humanLocator = locator.heading;
           } else if (locator.charStart !== undefined && locator.charEnd !== undefined) {
             humanLocator = `Chars ${locator.charStart}–${locator.charEnd}`;
           }

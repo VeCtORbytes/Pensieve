@@ -1,69 +1,70 @@
 import { extractText } from "unpdf";
 import * as cheerio from "cheerio";
 import { YoutubeTranscript } from "youtube-transcript";
+import { Extraction, Locator, Segment } from "./locator";
 
-export interface ExtractedSegment {
-  text: string;
-  page?: number;
-  timestamp?: number; // in seconds
-  charStart?: number;
-  charEnd?: number;
-}
+/**
+ * Assembles rawText and segments with exact charStart and charEnd boundaries by construction.
+ */
+function assemble(
+  parts: { text: string; meta: Omit<Locator, "charStart" | "charEnd"> }[]
+): Extraction {
+  const segments: Segment[] = [];
+  let raw = "";
 
-export interface ExtractionResult {
-  fullText: string;
-  segments: ExtractedSegment[];
+  for (const p of parts) {
+    const cleanText = p.text.trim();
+    if (!cleanText) continue;
+
+    const charStart = raw.length;
+    raw += cleanText + "\n\n";
+
+    segments.push({
+      text: cleanText,
+      locator: {
+        ...p.meta,
+        charStart,
+        charEnd: charStart + cleanText.length,
+      },
+    });
+  }
+
+  return { rawText: raw.trimEnd(), segments };
 }
 
 /**
- * Extracts text page-by-page from a PDF buffer with exact page locators.
+ * Extracts text page-by-page from a PDF buffer with page locators (no string markers).
  */
-export async function extractPdf(buffer: Uint8Array | ArrayBuffer): Promise<ExtractionResult> {
+export async function extractPdf(buffer: Uint8Array | ArrayBuffer): Promise<Extraction> {
   const pdfOutput: any = await extractText(buffer as any);
   const text: any = pdfOutput.text;
 
-  const segments: ExtractedSegment[] = [];
-  const fullTextParts: string[] = [];
+  const parts: { text: string; meta: Omit<Locator, "charStart" | "charEnd"> }[] = [];
 
   if (Array.isArray(text)) {
-    let currentOffset = 0;
     text.forEach((pageText: any, idx: number) => {
       const cleanPageText = typeof pageText === "string" ? pageText.trim() : String(pageText || "").trim();
       if (cleanPageText.length > 5) {
-        const pageNum = idx + 1;
-        const formattedPage = `[Page ${pageNum}]\n${cleanPageText}`;
-        const charStart = currentOffset;
-        const charEnd = currentOffset + formattedPage.length;
-
-        segments.push({
-          text: formattedPage,
-          page: pageNum,
-          charStart,
-          charEnd,
+        parts.push({
+          text: cleanPageText,
+          meta: { page: idx + 1 },
         });
-
-        fullTextParts.push(formattedPage);
-        currentOffset = charEnd + 2; // account for \n\n separator
       }
     });
   } else if (typeof text === "string" && text.trim()) {
-    segments.push({
+    parts.push({
       text: text.trim(),
-      page: 1,
-      charStart: 0,
-      charEnd: text.trim().length,
+      meta: { page: 1 },
     });
-    fullTextParts.push(text.trim());
   }
 
-  const fullText = fullTextParts.join("\n\n");
-  return { fullText, segments };
+  return assemble(parts);
 }
 
 /**
- * Fetches web page content, strips boilerplate, and segments text cleanly.
+ * Fetches web page content and segments text by sections/headings without markdown prefixes.
  */
-export async function extractWebsite(url: string): Promise<ExtractionResult> {
+export async function extractWebsite(url: string): Promise<Extraction> {
   const res = await fetch(url, {
     headers: {
       "User-Agent":
@@ -81,7 +82,7 @@ export async function extractWebsite(url: string): Promise<ExtractionResult> {
   // Remove non-content elements
   $("script, style, nav, footer, header, noscript, iframe, svg, form").remove();
 
-  const rawSegments: string[] = [];
+  const parts: { text: string; meta: Omit<Locator, "charStart" | "charEnd"> }[] = [];
 
   const h2Elements = $("h2");
   if (h2Elements.length > 0) {
@@ -89,84 +90,130 @@ export async function extractWebsite(url: string): Promise<ExtractionResult> {
       const title = $(el as any).text().trim();
       const nextContent = $(el as any).nextUntil("h2").text().replace(/\s+/g, " ").trim();
       if (title || nextContent) {
-        rawSegments.push(`## ${title}\n${nextContent}`);
+        parts.push({
+          text: `${title}\n${nextContent}`.trim(),
+          meta: { heading: title || undefined },
+        });
       }
     });
   }
 
-  if (rawSegments.length === 0) {
+  if (parts.length === 0) {
     $("p, article, section").each((_, el) => {
       const pText = $(el as any).text().replace(/\s+/g, " ").trim();
       if (pText.length > 30) {
-        rawSegments.push(pText);
+        parts.push({ text: pText, meta: {} });
       }
     });
   }
 
-  if (rawSegments.length === 0) {
-    rawSegments.push($("body").text().replace(/\s+/g, " ").trim());
+  if (parts.length === 0) {
+    const bodyText = $("body").text().replace(/\s+/g, " ").trim();
+    if (bodyText) parts.push({ text: bodyText, meta: {} });
   }
 
-  const segments: ExtractedSegment[] = [];
-  let offset = 0;
-
-  for (const segText of rawSegments) {
-    const charStart = offset;
-    const charEnd = offset + segText.length;
-    segments.push({
-      text: segText,
-      charStart,
-      charEnd,
-    });
-    offset = charEnd + 2;
-  }
-
-  const fullText = rawSegments.join("\n\n");
-  return { fullText, segments };
+  return assemble(parts);
 }
 
 /**
- * Fetches YouTube video captions with exact timestamp locators in seconds.
+ * Fetches YouTube video captions with exact startSec and endSec locators (no [MM:SS] text prefixes).
  */
-export async function extractYoutube(url: string): Promise<ExtractionResult> {
+export async function extractYoutube(url: string): Promise<Extraction> {
+  let transcript: any[] = [];
+
   try {
-    const transcript = await YoutubeTranscript.fetchTranscript(url);
-    if (!transcript || transcript.length === 0) {
-      throw new Error("No captions or transcript found for this YouTube video.");
+    // Attempt English captions first
+    transcript = await YoutubeTranscript.fetchTranscript(url, { lang: "en" });
+  } catch (e1) {
+    try {
+      // Fallback to default captions
+      transcript = await YoutubeTranscript.fetchTranscript(url);
+    } catch (e2: any) {
+      throw new Error(e2.message || "Could not retrieve transcript for YouTube video.");
     }
-
-    const segments: ExtractedSegment[] = [];
-    const fullTextLines: string[] = [];
-    let offset = 0;
-
-    for (const item of transcript) {
-      const timestampSecs = Math.floor(item.offset / 1000);
-      const mins = Math.floor(timestampSecs / 60);
-      const secs = (timestampSecs % 60).toString().padStart(2, "0");
-      const tsTag = `[${mins}:${secs}]`;
-      const cleanText = item.text
-        .replace(/&amp;/g, "&")
-        .replace(/&#39;/g, "'")
-        .replace(/&quot;/g, '"');
-
-      const line = `${tsTag} ${cleanText}`;
-      const charStart = offset;
-      const charEnd = offset + line.length;
-
-      segments.push({
-        text: line,
-        timestamp: timestampSecs,
-        charStart,
-        charEnd,
-      });
-
-      fullTextLines.push(line);
-      offset = charEnd + 1;
-    }
-
-    const fullText = fullTextLines.join("\n");
-    return { fullText, segments };
-  } catch (err: any) {
-    throw new Error(err.message || "Could not retrieve transcript for YouTube video.");
   }
+
+  if (!transcript || transcript.length === 0) {
+    throw new Error("No captions or transcript found for this YouTube video.");
+  }
+
+  const parts: { text: string; meta: Omit<Locator, "charStart" | "charEnd"> }[] = [];
+
+  for (const item of transcript) {
+    const startSec = Math.floor(item.offset / 1000);
+    const durationSec = Math.ceil((item.duration || 2000) / 1000);
+    const endSec = startSec + durationSec;
+
+    const cleanText = item.text
+      .replace(/&amp;/g, "&")
+      .replace(/&#39;/g, "'")
+      .replace(/&quot;/g, '"')
+      .trim();
+
+    if (cleanText) {
+      parts.push({
+        text: cleanText,
+        meta: { startSec, endSec },
+      });
+    }
+  }
+
+  return assemble(parts);
+}
+
+/**
+ * Parses WEBVTT format strings into timestamped cues with startSec/endSec locators.
+ */
+export function extractVtt(rawVtt: string): Extraction {
+  const lines = rawVtt.split(/\r?\n/);
+  const timestampRegex = /^(\d{2}:)?(\d{2}):(\d{2})\.\d{3}\s+-->\s+(\d{2}:)?(\d{2}):(\d{2})\.\d{3}/;
+  const headerRegex = /^(WEBVTT|NOTE|STYLE|REGION)/i;
+
+  const parts: { text: string; meta: Omit<Locator, "charStart" | "charEnd"> }[] = [];
+
+  let currentStartSec = 0;
+  let currentEndSec = 0;
+
+  for (let line of lines) {
+    line = line.trim();
+    if (!line) continue;
+    if (headerRegex.test(line)) continue;
+    if (/^\d+$/.test(line)) continue;
+
+    const tsMatch = line.match(timestampRegex);
+    if (tsMatch) {
+      const times = line.split("-->").map((t) => t.trim());
+      currentStartSec = parseTimeStringToSeconds(times[0]);
+      currentEndSec = parseTimeStringToSeconds(times[1]);
+      continue;
+    }
+
+    const textOnly = line.replace(/<[^>]*>/g, "").trim();
+    if (textOnly) {
+      parts.push({
+        text: textOnly,
+        meta: { startSec: currentStartSec, endSec: currentEndSec },
+      });
+    }
+  }
+
+  return assemble(parts);
+}
+
+/**
+ * Wraps plain text into a single extraction segment.
+ */
+export function extractPlainText(rawText: string): Extraction {
+  return assemble([{ text: rawText, meta: {} }]);
+}
+
+function parseTimeStringToSeconds(ts: string): number {
+  const parts = ts.split(":");
+  if (parts.length === 3) {
+    return parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + Math.floor(parseFloat(parts[2]));
+  }
+  if (parts.length === 2) {
+    return parseInt(parts[0]) * 60 + Math.floor(parseFloat(parts[1]));
+  }
+  return 0;
 }

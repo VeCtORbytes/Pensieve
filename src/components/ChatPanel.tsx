@@ -422,7 +422,6 @@ export default function ChatPanel({ notebookId }: { notebookId: string }) {
             rawText: targetViewerSource.rawText,
             createdAt: targetViewerSource.createdAt,
           }}
-          highlightText={selectedCitation?.text || null}
           locator={selectedCitation?.locator || null}
           onClose={() => setTargetViewerSource(null)}
         />
