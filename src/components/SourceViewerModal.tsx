@@ -141,8 +141,48 @@ export default function SourceViewerModal({
   // Extract YouTube Video ID
   const youtubeVideoId = getYouTubeVideoId(source.url || source.rawText);
 
-  // PDF URL (prioritize stored blobUrl Data URL, then url, then rawText if Base64)
-  const pdfUrl = source.blobUrl || source.url || (source.rawText?.startsWith("data:application/pdf") ? source.rawText : null);
+  // Convert Base64 Data URL or remote URL into browser-native Blob URL for PDF rendering
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (source.type !== "PDF") return;
+
+    const rawPdf =
+      source.blobUrl ||
+      source.url ||
+      (source.rawText?.startsWith("data:application/pdf") ? source.rawText : null);
+
+    if (!rawPdf) {
+      setPdfBlobUrl(null);
+      return;
+    }
+
+    if (rawPdf.startsWith("data:application/pdf")) {
+      try {
+        const base64Data = rawPdf.split(",")[1];
+        if (base64Data) {
+          const binaryStr = atob(base64Data);
+          const len = binaryStr.length;
+          const bytes = new Uint8Array(len);
+          for (let i = 0; i < len; i++) {
+            bytes[i] = binaryStr.charCodeAt(i);
+          }
+          const blob = new Blob([bytes], { type: "application/pdf" });
+          const createdUrl = URL.createObjectURL(blob);
+          setPdfBlobUrl(createdUrl);
+
+          return () => {
+            URL.revokeObjectURL(createdUrl);
+          };
+        }
+      } catch (err) {
+        console.error("Failed to create PDF blob URL:", err);
+        setPdfBlobUrl(rawPdf);
+      }
+    } else {
+      setPdfBlobUrl(rawPdf);
+    }
+  }, [source]);
 
   const displayText = variantText ?? source.rawText ?? "";
   const fullText = displayText || "No text content available.";
@@ -324,13 +364,19 @@ export default function SourceViewerModal({
               </div>
 
               <div className="flex-1 bg-neutral-100 p-4 overflow-hidden">
-                {pdfUrl ? (
-                  <iframe
+                {pdfBlobUrl ? (
+                  <object
                     key={`pdf-${currentPage}`}
-                    src={`${pdfUrl}#page=${currentPage}`}
+                    data={`${pdfBlobUrl}#page=${currentPage}`}
+                    type="application/pdf"
                     className="w-full h-full border-0 rounded-xl shadow-xs bg-white"
-                    title={source.title}
-                  />
+                  >
+                    <iframe
+                      src={`${pdfBlobUrl}#page=${currentPage}`}
+                      className="w-full h-full border-0 rounded-xl bg-white"
+                      title={source.title}
+                    />
+                  </object>
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full text-neutral-400 space-y-2">
                     <File className="w-10 h-10 text-neutral-300" />

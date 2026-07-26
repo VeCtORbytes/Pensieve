@@ -126,12 +126,20 @@ export async function POST(req: NextRequest) {
 
       if (searchResult && searchResult.length > 0) {
         // 4. Score Floor Filtering
-        const ABSOLUTE_FLOOR = 0.28;
-        const RELATIVE_FLOOR_RATIO = 0.55;
+        // Adjusted ABSOLUTE_FLOOR to 0.20 (from 0.28) so valid semantic matches
+        // on conceptual topics (e.g. hormones, biology) clear the floor cleanly.
+        const ABSOLUTE_FLOOR = 0.20;
+        const RELATIVE_FLOOR_RATIO = 0.50;
         const topScore = searchResult[0].score || 0;
         const floor = Math.max(ABSOLUTE_FLOOR, +(topScore * RELATIVE_FLOOR_RATIO).toFixed(3));
 
-        const scoredPoints = searchResult.filter((p) => p.score >= floor);
+        let scoredPoints = searchResult.filter((p) => p.score >= floor);
+
+        // Soft Fallback: If strict floor filtered everything out but candidates exist with score >= 0.18,
+        // take top 3 candidate passages so the LLM gets valid context to answer from.
+        if (scoredPoints.length === 0 && searchResult.length > 0 && searchResult[0].score >= 0.18) {
+          scoredPoints = searchResult.slice(0, 3);
+        }
 
         // 5. Cross-variant dedupe
         const { kept: candidatePoints, duplicateOf: duplicateReason } =
