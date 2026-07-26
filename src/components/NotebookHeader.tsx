@@ -2,12 +2,14 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { ArrowLeft, Trash2, Volume2, Search, Loader2 } from "lucide-react";
+import { ArrowLeft, Trash2, Volume2, Search, Loader2, Sparkles } from "lucide-react";
 import { renameNotebook, deleteNotebook } from "@/app/actions/notebooks";
 import AudioPlayer from "@/components/AudioPlayer";
 import CommandPalette from "@/components/CommandPalette";
 import SourceViewerModal from "@/components/SourceViewerModal";
 import AuthControls from "@/components/AuthControls";
+
+import StudyToolsModal from "@/components/StudyToolsModal";
 
 export default function NotebookHeader({
   id,
@@ -26,6 +28,9 @@ export default function NotebookHeader({
   // Command Palette states
   const [isCmdPaletteOpen, setIsCmdPaletteOpen] = useState(false);
   const [selectedViewerSource, setSelectedViewerSource] = useState<any | null>(null);
+
+  // Study Tools state
+  const [isStudyToolsOpen, setIsStudyToolsOpen] = useState(false);
 
   function save() {
     const clean = value.trim();
@@ -110,13 +115,24 @@ export default function NotebookHeader({
           <kbd className="rounded border border-[#E2E7EA] bg-[#F5F7F8] px-1 text-[10px]">⌘K</kbd>
         </button>
 
+        {/* Study Tools Button */}
+        <button
+          type="button"
+          onClick={() => setIsStudyToolsOpen(true)}
+          aria-label="Open AI Study Tools"
+          className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl bg-[#111622] hover:bg-[#192030] border border-[#222B3D] hover:border-[#8B5CF6] px-3.5 py-1.5 text-xs font-semibold text-[#E6EDF3] shadow-sm transition"
+        >
+          <Sparkles className="h-3.5 w-3.5 text-[#38BDF8] animate-pulse" />
+          <span className="hidden sm:inline">Study Tools</span>
+        </button>
+
         {/* Audio Overview Button */}
         <button
           type="button"
           disabled={isGeneratingAudio}
           onClick={handleGenerateAudioOverview}
           aria-label="Generate audio overview"
-          className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl bg-[#141A22] px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs transition hover:bg-[#3B4CC0] disabled:opacity-50"
+          className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl bg-[#8B5CF6] hover:bg-[#7C3AED] px-3.5 py-1.5 text-xs font-semibold text-white shadow-md transition disabled:opacity-50"
         >
           {isGeneratingAudio ? (
             <>
@@ -137,7 +153,7 @@ export default function NotebookHeader({
           onClick={remove}
           aria-label="Delete notebook"
           title="Delete notebook"
-          className="shrink-0 cursor-pointer rounded-xl p-2 text-neutral-400 transition hover:bg-red-50 hover:text-red-600"
+          className="shrink-0 cursor-pointer rounded-xl p-2 text-[#8B949E] transition hover:bg-red-950/40 hover:text-red-400"
         >
           <Trash2 className="h-4 w-4" />
         </button>
@@ -145,6 +161,14 @@ export default function NotebookHeader({
         {/* Auth Controls */}
         <AuthControls />
       </header>
+
+      {/* Study Tools Modal */}
+      {isStudyToolsOpen && (
+        <StudyToolsModal
+          notebookId={id}
+          onClose={() => setIsStudyToolsOpen(false)}
+        />
+      )}
 
       {/* Floating Audio Player */}
       {audioData && (
