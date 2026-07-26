@@ -12,14 +12,16 @@ import {
   FileText,
   MessageSquare,
 } from "lucide-react";
-import { CitationPayload } from "@/app/api/chat/route";
+import { CitationPayload, RetrievalTracePayload } from "@/app/api/chat/route";
 import SourceViewerModal from "@/components/SourceViewerModal";
+import RetrievalTrace from "@/components/RetrievalTrace";
 
 interface MessageItem {
   id: string;
   role: "user" | "assistant";
   content: string;
   citations?: CitationPayload[] | null;
+  trace?: RetrievalTracePayload | null;
 }
 
 interface DBMessage {
@@ -119,6 +121,7 @@ export default function ChatPanel({ notebookId }: { notebookId: string }) {
 
     const assistantMsgId = `assistant-${Date.now()}`;
     let citations: CitationPayload[] | null = null;
+    let trace: RetrievalTracePayload | null = null;
 
     try {
       const res = await fetch("/api/chat", {
@@ -135,40 +138,77 @@ export default function ChatPanel({ notebookId }: { notebookId: string }) {
         throw new Error(errorData.error || "Failed to generate response");
       }
 
-      const rawCitationsHeader = res.headers.get("X-Citations");
-      if (rawCitationsHeader) {
-        try {
-          citations = JSON.parse(decodeURIComponent(rawCitationsHeader));
-        } catch (e) {
-          console.error("Failed to decode X-Citations header:", e);
-        }
-      }
-
       setMessages((prev) => [
         ...prev,
         {
           id: assistantMsgId,
           role: "assistant",
           content: "",
-          citations,
+          citations: null,
+          trace: null,
         },
       ]);
 
       if (res.body) {
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
+        let buffer = "";
         let accumulatedText = "";
 
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          const chunk = decoder.decode(value, { stream: true });
-          accumulatedText += chunk;
 
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (!line.trim()) continue;
+
+            // AI SDK Data Stream protocol lines:
+            // 2:[{"type":"trace","data":...}]
+            // 0:"text chunk"
+            if (line.startsWith("2:")) {
+              try {
+                const dataArray = JSON.parse(line.slice(2));
+                if (Array.isArray(dataArray)) {
+                  for (const item of dataArray) {
+                    if (item.type === "trace") trace = item.data;
+                    if (item.type === "citations") citations = item.data;
+                  }
+                }
+              } catch (e) {
+                console.warn("Failed to parse stream data line:", line, e);
+              }
+            } else if (line.startsWith('0:"')) {
+              try {
+                const textChunk = JSON.parse(line.slice(2));
+                accumulatedText += textChunk;
+              } catch (e) {
+                accumulatedText += line.slice(2);
+              }
+            } else {
+              // Raw text chunk fallback
+              accumulatedText += line;
+            }
+
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === assistantMsgId
+                  ? { ...msg, content: accumulatedText, citations, trace }
+                  : msg
+              )
+            );
+          }
+        }
+
+        if (buffer.trim()) {
+          accumulatedText += buffer;
           setMessages((prev) =>
             prev.map((msg) =>
               msg.id === assistantMsgId
-                ? { ...msg, content: accumulatedText, citations }
+                ? { ...msg, content: accumulatedText, citations, trace }
                 : msg
             )
           );
@@ -270,18 +310,25 @@ export default function ChatPanel({ notebookId }: { notebookId: string }) {
                 </div>
 
                 {/* Message Content */}
-                <div className={`space-y-2 max-w-[85%] ${isUser ? "items-end" : ""}`}>
-                  <div
-                    className={`p-4 rounded-2xl text-xs leading-relaxed ${
-                      isUser
-                        ? "bg-neutral-900 text-white rounded-tr-none"
-                        : "bg-neutral-100/80 text-neutral-800 rounded-tl-none border border-neutral-200/60"
-                    }`}
-                  >
-                    <div className="whitespace-pre-wrap">{m.content}</div>
-                  </div>
+                <div className={`space-y-3 max-w-[85%] ${isUser ? "items-end" : ""}`}>
+                  {/* Retrieval Trace Component above assistant answer */}
+                  {!isUser && m.trace && (
+                    <RetrievalTrace trace={m.trace} isStreaming={isLoading && !m.content} />
+                  )}
 
-                  {/* Citation Chips under Assistant Answer */}
+                  {m.content && (
+                    <div
+                      className={`p-4 rounded-2xl text-xs leading-relaxed ${
+                        isUser
+                          ? "bg-neutral-900 text-white rounded-tr-none"
+                          : "bg-neutral-100/80 text-neutral-800 rounded-tl-none border border-neutral-200/60"
+                      }`}
+                    >
+                      <div className="whitespace-pre-wrap">{m.content}</div>
+                    </div>
+                  )}
+
+                  {/* Citation Chips under Assistant Answer: filename.pdf · p.4 */}
                   {!isUser && m.citations && m.citations.length > 0 && (
                     <div className="pt-1 space-y-1.5">
                       <div className="flex items-center gap-1 text-[11px] font-semibold text-neutral-400">
@@ -300,10 +347,12 @@ export default function ChatPanel({ notebookId }: { notebookId: string }) {
                             <span className="font-semibold text-emerald-700 bg-emerald-50 px-1 rounded">
                               [{c.number}]
                             </span>
-                            <span className="max-w-[120px] truncate">{c.title}</span>
-                            <span className="text-[10px] font-semibold text-neutral-500 bg-neutral-100 px-1 py-0.5 rounded">
-                              {c.humanLocator || `Chunk #${c.chunkIndex}`}
-                            </span>
+                            <span className="max-w-[130px] truncate">{c.title}</span>
+                            {c.humanLocator && (
+                              <span className="text-[10px] font-mono text-neutral-500">
+                                · {c.humanLocator}
+                              </span>
+                            )}
                           </button>
                         ))}
                       </div>
@@ -318,7 +367,7 @@ export default function ChatPanel({ notebookId }: { notebookId: string }) {
         {isLoading && (
           <div className="flex items-center gap-2 text-xs text-neutral-400 italic">
             <Loader2 className="w-3.5 h-3.5 animate-spin text-neutral-500" />
-            <span>Pensieve is searching sources & generating answer...</span>
+            <span>Pensieve is retrieving sources & streaming response...</span>
           </div>
         )}
         <div ref={messagesEndRef} />
@@ -361,7 +410,7 @@ export default function ChatPanel({ notebookId }: { notebookId: string }) {
                     {selectedCitation.title}
                   </h4>
                   <p className="text-[11px] text-neutral-400">
-                    Location: <span className="font-semibold text-neutral-700">{selectedCitation.humanLocator}</span> • Score: {(selectedCitation.score * 100).toFixed(1)}%
+                    Location: <span className="font-semibold text-neutral-700">{selectedCitation.humanLocator || "Exact Chunk"}</span> • Score: {selectedCitation.score}
                   </p>
                 </div>
               </div>
