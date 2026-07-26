@@ -4,7 +4,7 @@ import { qdrant, NOTEBOOK_COLLECTION_NAME } from "@/lib/qdrant";
 import { cleanVtt, chunkText } from "@/lib/chunking";
 import { generateEmbeddings } from "@/lib/embeddings";
 import { SourceType } from "@prisma/client";
-import { crypto } from "next/dist/compiled/@edge-runtime/primitives";
+import crypto from "crypto";
 
 export const maxDuration = 60;
 
