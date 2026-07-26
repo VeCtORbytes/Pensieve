@@ -13,7 +13,6 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { CitationPayload } from "@/app/api/chat/route";
-
 import SourceViewerModal from "@/components/SourceViewerModal";
 
 interface MessageItem {
@@ -53,7 +52,6 @@ export default function ChatPanel({ notebookId }: { notebookId: string }) {
         if (found) {
           setTargetViewerSource(found);
         } else {
-          // Fallback object with title & raw text from citation
           setTargetViewerSource({
             id: citation.sourceId,
             title: citation.title,
@@ -137,7 +135,6 @@ export default function ChatPanel({ notebookId }: { notebookId: string }) {
         throw new Error(errorData.error || "Failed to generate response");
       }
 
-      // Read Citations from Response Header
       const rawCitationsHeader = res.headers.get("X-Citations");
       if (rawCitationsHeader) {
         try {
@@ -147,7 +144,6 @@ export default function ChatPanel({ notebookId }: { notebookId: string }) {
         }
       }
 
-      // Add initial assistant placeholder
       setMessages((prev) => [
         ...prev,
         {
@@ -158,7 +154,6 @@ export default function ChatPanel({ notebookId }: { notebookId: string }) {
         },
       ]);
 
-      // Stream text chunk by chunk
       if (res.body) {
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
@@ -208,8 +203,8 @@ export default function ChatPanel({ notebookId }: { notebookId: string }) {
             <Sparkles className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-sm font-semibold text-neutral-900">Notebook AI Assistant</h2>
-            <p className="text-[11px] text-neutral-400">RAG Chat with real-time citations</p>
+            <h2 className="text-sm font-semibold text-neutral-900">Pensieve AI Assistant</h2>
+            <p className="text-[11px] text-neutral-400">Grounded RAG with precision locators</p>
           </div>
         </div>
       </div>
@@ -305,9 +300,9 @@ export default function ChatPanel({ notebookId }: { notebookId: string }) {
                             <span className="font-semibold text-emerald-700 bg-emerald-50 px-1 rounded">
                               [{c.number}]
                             </span>
-                            <span className="max-w-[140px] truncate">{c.title}</span>
-                            <span className="text-[10px] text-neutral-400">
-                              (chunk {c.chunkIndex})
+                            <span className="max-w-[120px] truncate">{c.title}</span>
+                            <span className="text-[10px] font-semibold text-neutral-500 bg-neutral-100 px-1 py-0.5 rounded">
+                              {c.humanLocator || `Chunk #${c.chunkIndex}`}
                             </span>
                           </button>
                         ))}
@@ -323,7 +318,7 @@ export default function ChatPanel({ notebookId }: { notebookId: string }) {
         {isLoading && (
           <div className="flex items-center gap-2 text-xs text-neutral-400 italic">
             <Loader2 className="w-3.5 h-3.5 animate-spin text-neutral-500" />
-            <span>Searching sources & generating answer...</span>
+            <span>Pensieve is searching sources & generating answer...</span>
           </div>
         )}
         <div ref={messagesEndRef} />
@@ -335,7 +330,7 @@ export default function ChatPanel({ notebookId }: { notebookId: string }) {
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask a question about your notebook sources..."
+            placeholder="Ask Pensieve a question about your notebook sources..."
             className="w-full pl-4 pr-12 py-3 text-xs bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:ring-2 focus:ring-neutral-900 focus:bg-white transition"
           />
           <button
@@ -354,7 +349,7 @@ export default function ChatPanel({ notebookId }: { notebookId: string }) {
 
       {/* Citation Detail Modal */}
       {selectedCitation && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
           <div className="bg-white rounded-xl max-w-lg w-full p-6 shadow-2xl space-y-4 border border-neutral-200">
             <div className="flex items-start justify-between border-b border-neutral-100 pb-3">
               <div className="flex items-center gap-2">
@@ -366,8 +361,7 @@ export default function ChatPanel({ notebookId }: { notebookId: string }) {
                     {selectedCitation.title}
                   </h4>
                   <p className="text-[11px] text-neutral-400">
-                    Chunk Index #{selectedCitation.chunkIndex} • Similarity Score:{" "}
-                    {(selectedCitation.score * 100).toFixed(1)}%
+                    Location: <span className="font-semibold text-neutral-700">{selectedCitation.humanLocator}</span> • Score: {(selectedCitation.score * 100).toFixed(1)}%
                   </p>
                 </div>
               </div>
@@ -424,10 +418,12 @@ export default function ChatPanel({ notebookId }: { notebookId: string }) {
             title: targetViewerSource.title,
             type: targetViewerSource.type,
             url: targetViewerSource.url,
+            blobUrl: targetViewerSource.blobUrl,
             rawText: targetViewerSource.rawText,
             createdAt: targetViewerSource.createdAt,
           }}
           highlightText={selectedCitation?.text || null}
+          locator={selectedCitation?.locator || null}
           onClose={() => setTargetViewerSource(null)}
         />
       )}

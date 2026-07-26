@@ -13,6 +13,7 @@ import {
   Play,
   Highlighter,
 } from "lucide-react";
+import { ChunkLocator } from "@/lib/chunking";
 
 export interface SourceViewerProps {
   source: {
@@ -20,10 +21,12 @@ export interface SourceViewerProps {
     title: string;
     type: string; // "PDF" | "TEXT" | "WEBSITE" | "YOUTUBE" | "TRANSCRIPT"
     url?: string | null;
+    blobUrl?: string | null;
     rawText?: string | null;
     createdAt?: string;
   };
   highlightText?: string | null;
+  locator?: ChunkLocator | null;
   initialPage?: number;
   initialTimestamp?: number;
   onClose: () => void;
@@ -32,12 +35,16 @@ export interface SourceViewerProps {
 export default function SourceViewerModal({
   source,
   highlightText,
+  locator,
   initialPage = 1,
   initialTimestamp = 0,
   onClose,
 }: SourceViewerProps) {
-  const [currentPage, setCurrentPage] = useState<number>(initialPage);
-  const [startTime, setStartTime] = useState<number>(initialTimestamp);
+  const targetPage = locator?.page || initialPage;
+  const targetTimestamp = locator?.timestamp ?? initialTimestamp;
+
+  const [currentPage, setCurrentPage] = useState<number>(targetPage);
+  const [startTime, setStartTime] = useState<number>(targetTimestamp);
   const [activeViewTab, setActiveViewTab] = useState<"viewer" | "text">("viewer");
 
   const markRef = useRef<HTMLElement>(null);
@@ -49,24 +56,13 @@ export default function SourceViewerModal({
         markRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       }, 200);
     }
-  }, [highlightText, activeViewTab]);
+  }, [highlightText, locator, activeViewTab]);
 
   // Extract YouTube Video ID
   const youtubeVideoId = getYouTubeVideoId(source.url || source.rawText);
 
-  // Detect YouTube start timestamp from highlight text if present (e.g. "[01:45]")
-  useEffect(() => {
-    if (highlightText && source.type === "YOUTUBE") {
-      const match = highlightText.match(/\[(\d{1,2}:\d{2})\]/);
-      if (match && match[1]) {
-        const secs = parseTimestampToSeconds(match[1]);
-        if (secs > 0) setStartTime(secs);
-      }
-    }
-  }, [highlightText, source.type]);
-
-  // PDF URL (use url or rawText if base64 data url)
-  const pdfUrl = source.url || (source.rawText?.startsWith("data:application/pdf") ? source.rawText : null);
+  // PDF URL (prioritize stored blobUrl Data URL, then url, then rawText if Base64)
+  const pdfUrl = source.blobUrl || source.url || (source.rawText?.startsWith("data:application/pdf") ? source.rawText : null);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 sm:p-6 animate-in fade-in duration-150">
@@ -94,7 +90,6 @@ export default function SourceViewerModal({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* View tab toggles for PDF / YouTube */}
             {(source.type === "PDF" || source.type === "YOUTUBE") && (
               <div className="flex bg-neutral-100 p-0.5 rounded-lg text-xs font-medium">
                 <button
@@ -137,10 +132,9 @@ export default function SourceViewerModal({
           {/* 1. PDF VIEWER */}
           {source.type === "PDF" && activeViewTab === "viewer" && (
             <div className="flex-1 flex flex-col overflow-hidden">
-              {/* PDF Toolbar */}
               <div className="flex items-center justify-between px-6 py-2.5 bg-white border-b border-neutral-200 text-xs">
                 <span className="text-neutral-500 font-medium">
-                  Document Viewer (Page {currentPage})
+                  Document Viewer (Target Page {currentPage})
                 </span>
                 <div className="flex items-center gap-2">
                   <button
@@ -173,7 +167,7 @@ export default function SourceViewerModal({
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full text-neutral-400 space-y-2">
                     <File className="w-10 h-10 text-neutral-300" />
-                    <p className="text-xs">PDF preview unavailable. View extracted text below.</p>
+                    <p className="text-xs">PDF binary file not stored. View extracted text tab above.</p>
                   </div>
                 )}
               </div>
@@ -183,7 +177,6 @@ export default function SourceViewerModal({
           {/* 2. YOUTUBE VIEWER */}
           {source.type === "YOUTUBE" && activeViewTab === "viewer" && (
             <div className="flex-1 grid grid-cols-1 md:grid-cols-3 overflow-hidden">
-              {/* Video Player */}
               <div className="md:col-span-2 bg-black flex flex-col justify-center items-center p-4">
                 {youtubeVideoId ? (
                   <div className="w-full aspect-video rounded-xl overflow-hidden shadow-2xl">
@@ -276,7 +269,12 @@ export default function SourceViewerModal({
               )}
 
               <div className="p-6 bg-white rounded-xl border border-neutral-200 shadow-xs font-sans text-xs text-neutral-800 leading-relaxed whitespace-pre-wrap">
-                {renderHighlightedContent(source.rawText || "No text content available.", highlightText, markRef)}
+                {renderHighlightedContent(
+                  source.rawText || "No text content available.",
+                  highlightText,
+                  locator,
+                  markRef
+                )}
               </div>
             </div>
           )}
@@ -287,49 +285,25 @@ export default function SourceViewerModal({
 }
 
 /**
- * Wraps matching highlightText substring inside <mark ref={markRef}>
+ * Wraps matching text in <mark ref={markRef}> using exact locator charStart/charEnd or substring match
  */
 function renderHighlightedContent(
   fullText: string,
   highlightText?: string | null,
+  locator?: ChunkLocator | null,
   ref?: React.RefObject<HTMLElement>
 ) {
-  if (!highlightText || !highlightText.trim()) {
-    return fullText;
-  }
-
-  const cleanHighlight = highlightText.trim();
-  const index = fullText.indexOf(cleanHighlight);
-
-  if (index !== -1) {
-    const before = fullText.slice(0, index);
-    const matched = fullText.slice(index, index + cleanHighlight.length);
-    const after = fullText.slice(index + cleanHighlight.length);
-
-    return (
-      <>
-        {before}
-        <mark
-          ref={ref as any}
-          className="bg-amber-200 text-amber-950 font-semibold px-1 py-0.5 rounded shadow-xs border border-amber-300 inline"
-        >
-          {matched}
-        </mark>
-        {after}
-      </>
-    );
-  }
-
-  // Case-insensitive / fallback fuzzy match if exact substring offset varies slightly
-  const lowerFull = fullText.toLowerCase();
-  const lowerHighlight = cleanHighlight.toLowerCase();
-  const lowerIndex = lowerFull.indexOf(lowerHighlight.slice(0, 40));
-
-  if (lowerIndex !== -1) {
-    const matchLen = Math.min(cleanHighlight.length, fullText.length - lowerIndex);
-    const before = fullText.slice(0, lowerIndex);
-    const matched = fullText.slice(lowerIndex, lowerIndex + matchLen);
-    const after = fullText.slice(lowerIndex + matchLen);
+  // 1. Prefer exact character range locator if available
+  if (
+    locator?.charStart !== undefined &&
+    locator?.charEnd !== undefined &&
+    locator.charStart >= 0 &&
+    locator.charEnd <= fullText.length &&
+    locator.charStart < locator.charEnd
+  ) {
+    const before = fullText.slice(0, locator.charStart);
+    const matched = fullText.slice(locator.charStart, locator.charEnd);
+    const after = fullText.slice(locator.charEnd);
 
     return (
       <>
@@ -343,14 +317,61 @@ function renderHighlightedContent(
         {after}
       </>
     );
+  }
+
+  // 2. Exact substring match fallback
+  if (highlightText && highlightText.trim()) {
+    const cleanHighlight = highlightText.trim();
+    const index = fullText.indexOf(cleanHighlight);
+
+    if (index !== -1) {
+      const before = fullText.slice(0, index);
+      const matched = fullText.slice(index, index + cleanHighlight.length);
+      const after = fullText.slice(index + cleanHighlight.length);
+
+      return (
+        <>
+          {before}
+          <mark
+            ref={ref as any}
+            className="bg-amber-200 text-amber-950 font-semibold px-1 py-0.5 rounded shadow-xs border border-amber-300 inline"
+          >
+            {matched}
+          </mark>
+          {after}
+        </>
+      );
+    }
+
+    // 3. Substring search fallback
+    const lowerFull = fullText.toLowerCase();
+    const lowerHighlight = cleanHighlight.toLowerCase();
+    const lowerIndex = lowerFull.indexOf(lowerHighlight.slice(0, 40));
+
+    if (lowerIndex !== -1) {
+      const matchLen = Math.min(cleanHighlight.length, fullText.length - lowerIndex);
+      const before = fullText.slice(0, lowerIndex);
+      const matched = fullText.slice(lowerIndex, lowerIndex + matchLen);
+      const after = fullText.slice(lowerIndex + matchLen);
+
+      return (
+        <>
+          {before}
+          <mark
+            ref={ref as any}
+            className="bg-amber-200 text-amber-950 font-semibold px-1 py-0.5 rounded shadow-xs border border-amber-300 inline"
+          >
+            {matched}
+          </mark>
+          {after}
+        </>
+      );
+    }
   }
 
   return fullText;
 }
 
-/**
- * Type badge helper icon + style
- */
 function TypeBadge({ type }: { type: string }) {
   let icon = <FileText className="w-3.5 h-3.5" />;
   let style = "bg-neutral-100 text-neutral-700 border-neutral-200";

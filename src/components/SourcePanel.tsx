@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Plus, FileText, Upload, Link2, Video, File, Loader2, X, Eye } from "lucide-react";
+import { Plus, FileText, Upload, Link2, Video, File, Loader2, X, Eye, Trash2, RotateCw } from "lucide-react";
 import SourceViewerModal from "@/components/SourceViewerModal";
 
 interface Source {
@@ -10,6 +10,7 @@ interface Source {
   type: string;
   title: string;
   url?: string | null;
+  blobUrl?: string | null;
   rawText?: string | null;
   status: "QUEUED" | "EXTRACTING" | "EMBEDDING" | "READY" | "FAILED";
   error?: string | null;
@@ -24,6 +25,7 @@ export default function SourcePanel({ notebookId }: { notebookId: string }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedViewerSource, setSelectedViewerSource] = useState<Source | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>("text");
+  const [actionSourceId, setActionSourceId] = useState<string | null>(null);
 
   // Form states
   const [title, setTitle] = useState("");
@@ -111,6 +113,42 @@ export default function SourcePanel({ notebookId }: { notebookId: string }) {
     }
   }
 
+  async function handleDeleteSource(e: React.MouseEvent, id: string) {
+    e.stopPropagation();
+    if (!confirm("Are you sure you want to delete this source and its vector embeddings?")) return;
+
+    try {
+      setActionSourceId(id);
+      const res = await fetch(`/api/sources?id=${id}`, { method: "DELETE" });
+      if (res.ok) {
+        fetchSources();
+      }
+    } catch (err) {
+      console.error("Failed to delete source:", err);
+    } finally {
+      setActionSourceId(null);
+    }
+  }
+
+  async function handleReindexSource(e: React.MouseEvent, id: string) {
+    e.stopPropagation();
+    try {
+      setActionSourceId(id);
+      const res = await fetch("/api/sources", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      if (res.ok) {
+        fetchSources();
+      }
+    } catch (err) {
+      console.error("Failed to re-index source:", err);
+    } finally {
+      setActionSourceId(null);
+    }
+  }
+
   function handleVttUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -149,11 +187,12 @@ export default function SourcePanel({ notebookId }: { notebookId: string }) {
           Sources ({sources.length})
         </h2>
         <button
+          type="button"
           onClick={() => {
             resetForm();
             setIsModalOpen(true);
           }}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-neutral-900 rounded-lg hover:bg-neutral-800 transition"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-neutral-900 rounded-lg hover:bg-neutral-800 transition cursor-pointer"
         >
           <Plus className="w-3.5 h-3.5" />
           Add Source
@@ -164,7 +203,7 @@ export default function SourcePanel({ notebookId }: { notebookId: string }) {
         {sources.length === 0 ? (
           <div className="py-12 text-center text-neutral-400">
             <FileText className="w-8 h-8 mx-auto text-neutral-300 mb-2" />
-            <p className="text-xs">No sources added yet.</p>
+            <p className="text-xs font-medium text-neutral-600">No sources added yet.</p>
             <p className="text-[11px] text-neutral-400 mt-1">
               Add PDF, Website, YouTube, Text, or VTT sources.
             </p>
@@ -174,7 +213,7 @@ export default function SourcePanel({ notebookId }: { notebookId: string }) {
             <div
               key={s.id}
               onClick={() => setSelectedViewerSource(s)}
-              className="p-3 rounded-xl border border-neutral-200/90 bg-white hover:bg-neutral-50 shadow-2xs hover:border-neutral-300 transition cursor-pointer space-y-1.5 group"
+              className="p-3 rounded-xl border border-neutral-200/90 bg-white hover:bg-neutral-50 shadow-2xs hover:border-neutral-300 transition cursor-pointer space-y-2 group"
             >
               <div className="flex items-start justify-between gap-2">
                 <span className="font-medium text-xs text-neutral-800 group-hover:text-neutral-900 truncate flex-1 flex items-center gap-1.5">
@@ -183,13 +222,38 @@ export default function SourcePanel({ notebookId }: { notebookId: string }) {
                 <StatusBadge status={s.status} />
               </div>
 
-              <div className="flex items-center justify-between text-xs text-neutral-400 pt-1 border-t border-neutral-100">
+              <div className="flex items-center justify-between text-xs text-neutral-400 pt-1.5 border-t border-neutral-100">
                 <span className="uppercase text-[10px] font-semibold tracking-wide text-neutral-500 bg-neutral-100 px-1.5 py-0.5 rounded">
                   {s.type}
                 </span>
-                <div className="flex items-center gap-1 text-[11px] text-neutral-400 group-hover:text-neutral-700 transition font-medium">
-                  <Eye className="w-3 h-3 text-neutral-400" />
-                  <span>{s.status === "READY" ? `${s.chunkCount} chunks` : s.status}</span>
+
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 text-[11px] text-neutral-400 group-hover:text-neutral-700 transition font-medium">
+                    <Eye className="w-3 h-3 text-neutral-400" />
+                    <span>{s.status === "READY" ? `${s.chunkCount} chunks` : s.status}</span>
+                  </div>
+
+                  {/* Re-index Button */}
+                  <button
+                    type="button"
+                    title="Re-index Source"
+                    disabled={actionSourceId === s.id}
+                    onClick={(e) => handleReindexSource(e, s.id)}
+                    className="p-1 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 rounded transition cursor-pointer"
+                  >
+                    <RotateCw className={`w-3 h-3 ${actionSourceId === s.id ? "animate-spin" : ""}`} />
+                  </button>
+
+                  {/* Delete Button */}
+                  <button
+                    type="button"
+                    title="Delete Source & Vectors"
+                    disabled={actionSourceId === s.id}
+                    onClick={(e) => handleDeleteSource(e, s.id)}
+                    className="p-1 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded transition cursor-pointer"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
                 </div>
               </div>
 
@@ -211,6 +275,7 @@ export default function SourcePanel({ notebookId }: { notebookId: string }) {
             title: selectedViewerSource.title,
             type: selectedViewerSource.type,
             url: selectedViewerSource.url,
+            blobUrl: selectedViewerSource.blobUrl,
             rawText: selectedViewerSource.rawText,
             createdAt: selectedViewerSource.createdAt,
           }}
@@ -218,15 +283,16 @@ export default function SourcePanel({ notebookId }: { notebookId: string }) {
         />
       )}
 
-      {/* Modal Dialog */}
+      {/* Add Source Modal Dialog */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
           <div className="bg-white rounded-xl max-w-xl w-full p-6 shadow-2xl space-y-5 border border-neutral-200">
             <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
               <h3 className="text-base font-semibold text-neutral-900">Add Knowledge Source</h3>
               <button
+                type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="text-neutral-400 hover:text-neutral-600"
+                className="text-neutral-400 hover:text-neutral-600 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -250,7 +316,7 @@ export default function SourcePanel({ notebookId }: { notebookId: string }) {
                       setActiveTab(tab.id as TabType);
                       setSubmitError("");
                     }}
-                    className={`flex items-center gap-1.5 px-3 py-2 border-b-2 font-medium transition whitespace-nowrap ${
+                    className={`flex items-center gap-1.5 px-3 py-2 border-b-2 font-medium transition whitespace-nowrap cursor-pointer ${
                       activeTab === tab.id
                         ? "border-neutral-900 text-neutral-900"
                         : "border-transparent text-neutral-400 hover:text-neutral-700"
@@ -289,7 +355,7 @@ export default function SourcePanel({ notebookId }: { notebookId: string }) {
                     accept=".pdf"
                     required={!content}
                     onChange={handlePdfUpload}
-                    className="w-full text-xs text-neutral-500 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-neutral-100 file:text-neutral-700 hover:file:bg-neutral-200"
+                    className="w-full text-xs text-neutral-500 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-neutral-100 file:text-neutral-700 hover:file:bg-neutral-200 cursor-pointer"
                   />
                 </div>
               )}
@@ -338,12 +404,12 @@ export default function SourcePanel({ notebookId }: { notebookId: string }) {
                     type="file"
                     accept=".vtt,.txt"
                     onChange={handleVttUpload}
-                    className="w-full text-xs text-neutral-500 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-neutral-100 file:text-neutral-700 hover:file:bg-neutral-200"
+                    className="w-full text-xs text-neutral-500 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-neutral-100 file:text-neutral-700 hover:file:bg-neutral-200 cursor-pointer"
                   />
                 </div>
               )}
 
-              {/* Text Area for Text / VTT / PDF content view */}
+              {/* Text Area for Text / VTT content view */}
               {(activeTab === "text" || activeTab === "vtt") && (
                 <div>
                   <label className="block text-xs font-medium text-neutral-700 mb-1">
@@ -368,14 +434,14 @@ export default function SourcePanel({ notebookId }: { notebookId: string }) {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-xs font-medium text-neutral-600 hover:bg-neutral-100 rounded-lg"
+                  className="px-4 py-2 text-xs font-medium text-neutral-600 hover:bg-neutral-100 rounded-lg cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-white bg-neutral-900 hover:bg-neutral-800 rounded-lg disabled:opacity-50"
+                  className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-white bg-neutral-900 hover:bg-neutral-800 rounded-lg disabled:opacity-50 cursor-pointer"
                 >
                   {isSubmitting ? (
                     <>
@@ -413,7 +479,6 @@ function StatusBadge({ status }: { status: Source["status"] }) {
     );
   }
 
-  // QUEUED, EXTRACTING, EMBEDDING (Yellow pulsing indicator)
   return (
     <span className="flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
       <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />

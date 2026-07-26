@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import { qdrant, NOTEBOOK_COLLECTION_NAME } from "@/lib/qdrant";
 
 export async function createNotebook() {
   const notebook = await db.notebook.create({
@@ -23,6 +24,22 @@ export async function renameNotebook(id: string, title: string) {
 }
 
 export async function deleteNotebook(id: string) {
+  // Clean up all vector points for this notebook in Qdrant
+  try {
+    await qdrant.delete(NOTEBOOK_COLLECTION_NAME, {
+      filter: {
+        must: [
+          {
+            key: "notebookId",
+            match: { value: id },
+          },
+        ],
+      },
+    });
+  } catch (qErr) {
+    console.warn("Notice: Failed to clean up Qdrant points for deleted notebook:", qErr);
+  }
+
   await db.notebook.delete({ where: { id } });
   revalidatePath("/");
   redirect("/");

@@ -1,54 +1,153 @@
+import { ExtractedSegment, ExtractionResult } from "./extractors";
+
+export interface ChunkLocator {
+  page?: number;
+  timestamp?: number;
+  charStart?: number;
+  charEnd?: number;
+}
+
 export interface TextChunk {
   text: string;
   chunkIndex: number;
+  locator: ChunkLocator;
 }
 
 /**
- * Strips WEBVTT headers, cue identifiers, timestamps, and formatting tags to output clean text.
+ * Strips WEBVTT headers and outputs clean text along with timestamped segments.
  */
-export function cleanVtt(rawVtt: string): string {
+export function cleanVtt(rawVtt: string): ExtractionResult {
   const lines = rawVtt.split(/\r?\n/);
+  const timestampRegex = /^(\d{2}:)?(\d{2}):(\d{2})\.\d{3}\s+-->/;
+  const headerRegex = /^(WEBVTT|NOTE|STYLE|REGION)/i;
+
+  const segments: ExtractedSegment[] = [];
   const cleanLines: string[] = [];
 
-  const timestampRegex = /^\d{2}:?[\d:]+\.\d{3}\s+-->\s+\d{2}:?[\d:]+\.\d{3}/;
-  const headerRegex = /^(WEBVTT|NOTE|STYLE|REGION)/i;
+  let currentSecs = 0;
+  let offset = 0;
 
   for (let line of lines) {
     line = line.trim();
-
-    // Skip empty lines, headers, cue numbers, and timestamp lines
     if (!line) continue;
     if (headerRegex.test(line)) continue;
-    if (timestampRegex.test(line)) continue;
-    if (/^\d+$/.test(line)) continue; // Cue numbers
+    if (/^\d+$/.test(line)) continue;
 
-    // Strip HTML/VTT style tags like <v Speaker> or <b>
+    const tsMatch = line.match(timestampRegex);
+    if (tsMatch) {
+      const parts = line.split("-->")[0].trim().split(":");
+      if (parts.length === 3) {
+        currentSecs = parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseFloat(parts[2]);
+      } else if (parts.length === 2) {
+        currentSecs = parseInt(parts[0]) * 60 + parseFloat(parts[1]);
+      }
+      continue;
+    }
+
     const textOnly = line.replace(/<[^>]*>/g, "").trim();
     if (textOnly) {
+      const charStart = offset;
+      const charEnd = offset + textOnly.length;
+
+      segments.push({
+        text: textOnly,
+        timestamp: Math.floor(currentSecs),
+        charStart,
+        charEnd,
+      });
+
       cleanLines.push(textOnly);
+      offset = charEnd + 1;
     }
   }
 
-  // Deduplicate consecutive identical lines (common in VTT live captions)
-  const deduped: string[] = [];
-  for (const line of cleanLines) {
-    if (deduped.length === 0 || deduped[deduped.length - 1] !== line) {
-      deduped.push(line);
-    }
-  }
-
-  return deduped.join(" ");
+  const fullText = cleanLines.join(" ");
+  return { fullText, segments };
 }
 
 /**
- * Chunks a block of text into character windows with overlap.
+ * Chunks extracted segments or raw text into character windows with overlap, preserving locator metadata.
+ */
+export function chunkSegments(
+  extraction: ExtractionResult,
+  chunkSize: number = 800,
+  overlap: number = 100
+): TextChunk[] {
+  const { fullText, segments } = extraction;
+
+  if (!fullText.trim()) return [];
+
+  // If segments exist, chunk segment by segment to preserve page / timestamp boundaries
+  if (segments && segments.length > 0) {
+    const chunks: TextChunk[] = [];
+    let globalIndex = 0;
+
+    for (const seg of segments) {
+      const segText = seg.text.trim();
+      if (!segText) continue;
+
+      if (segText.length <= chunkSize) {
+        chunks.push({
+          text: segText,
+          chunkIndex: globalIndex++,
+          locator: {
+            page: seg.page,
+            timestamp: seg.timestamp,
+            charStart: seg.charStart ?? 0,
+            charEnd: seg.charEnd ?? segText.length,
+          },
+        });
+      } else {
+        // Sub-chunk large segment
+        let startIndex = 0;
+        while (startIndex < segText.length) {
+          let endIndex = startIndex + chunkSize;
+          if (endIndex < segText.length) {
+            const lastSpace = segText.lastIndexOf(" ", endIndex);
+            if (lastSpace > startIndex + chunkSize / 2) {
+              endIndex = lastSpace;
+            }
+          } else {
+            endIndex = segText.length;
+          }
+
+          const subChunkContent = segText.slice(startIndex, endIndex).trim();
+          if (subChunkContent) {
+            const baseStart = seg.charStart ?? 0;
+            chunks.push({
+              text: subChunkContent,
+              chunkIndex: globalIndex++,
+              locator: {
+                page: seg.page,
+                timestamp: seg.timestamp,
+                charStart: baseStart + startIndex,
+                charEnd: baseStart + endIndex,
+              },
+            });
+          }
+
+          if (endIndex >= segText.length) break;
+          startIndex = endIndex - overlap;
+        }
+      }
+    }
+
+    return chunks;
+  }
+
+  // Fallback chunking for plain text without segments
+  return chunkText(fullText, chunkSize, overlap);
+}
+
+/**
+ * Fallback chunker for raw text strings.
  */
 export function chunkText(
   text: string,
   chunkSize: number = 800,
   overlap: number = 100
 ): TextChunk[] {
-  const sanitized = text.replace(/\s+/g, " ").trim();
+  const sanitized = text.trim();
   if (!sanitized) return [];
 
   const chunks: TextChunk[] = [];
@@ -58,7 +157,6 @@ export function chunkText(
   while (startIndex < sanitized.length) {
     let endIndex = startIndex + chunkSize;
     if (endIndex < sanitized.length) {
-      // Find space to break cleanly on word boundary if possible
       const lastSpace = sanitized.lastIndexOf(" ", endIndex);
       if (lastSpace > startIndex + chunkSize / 2) {
         endIndex = lastSpace;
@@ -72,6 +170,10 @@ export function chunkText(
       chunks.push({
         text: chunkContent,
         chunkIndex: index++,
+        locator: {
+          charStart: startIndex,
+          charEnd: endIndex,
+        },
       });
     }
 

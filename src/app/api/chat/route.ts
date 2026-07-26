@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { qdrant, NOTEBOOK_COLLECTION_NAME } from "@/lib/qdrant";
 import { generateEmbeddings } from "@/lib/embeddings";
+import { ChunkLocator } from "@/lib/chunking";
 import { openai } from "@ai-sdk/openai";
 import { streamText } from "ai";
 
@@ -14,6 +15,8 @@ export interface CitationPayload {
   chunkIndex: number;
   text: string;
   score: number;
+  locator?: ChunkLocator;
+  humanLocator?: string;
 }
 
 export async function GET(req: NextRequest) {
@@ -57,7 +60,7 @@ export async function POST(req: NextRequest) {
     try {
       const [queryVector] = await generateEmbeddings([userPrompt]);
 
-      // 2. Retrieve Top 20 Candidates from Qdrant
+      // 2. Retrieve Top 20 Candidates from Qdrant with self-healing index retry
       let searchResult;
       try {
         searchResult = await qdrant.search(NOTEBOOK_COLLECTION_NAME, {
@@ -101,7 +104,6 @@ export async function POST(req: NextRequest) {
         const selectedPoints: typeof searchResult = [];
         const sourceCounts = new Map<string, number>();
 
-        // First pass: cap at 2 chunks per source
         for (const point of searchResult) {
           const sId = (point.payload?.sourceId as string) || "unknown";
           const count = sourceCounts.get(sId) || 0;
@@ -112,7 +114,6 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        // Second pass: fill up to 6 if total unique sources < 3
         if (selectedPoints.length < 6) {
           for (const point of searchResult) {
             if (!selectedPoints.includes(point)) {
@@ -129,29 +130,45 @@ export async function POST(req: NextRequest) {
 
         const sourceRecords = await db.source.findMany({
           where: { id: { in: sourceIds } },
-          select: { id: true, title: true },
+          select: { id: true, title: true, type: true },
         });
 
-        const titleMap = new Map<string, string>();
-        sourceRecords.forEach((s) => titleMap.set(s.id, s.title));
+        const titleMap = new Map<string, { title: string; type: string }>();
+        sourceRecords.forEach((s) => titleMap.set(s.id, { title: s.title, type: s.type }));
 
-        // 5. Format Numbered Citations & Context String
+        // 5. Format Numbered Citations & Human Locators
         citations = selectedPoints.map((p, idx) => {
           const sId = (p.payload?.sourceId as string) || "";
+          const meta = titleMap.get(sId) || { title: "Untitled Source", type: "TEXT" };
+          const locator = (p.payload?.locator as ChunkLocator) || {};
+
+          let humanLocator = `Chunk #${(p.payload?.chunkIndex as number) ?? idx}`;
+          if (locator.page) {
+            humanLocator = `Page ${locator.page}`;
+          } else if (locator.timestamp !== undefined && locator.timestamp !== null) {
+            const mins = Math.floor(locator.timestamp / 60);
+            const secs = (locator.timestamp % 60).toString().padStart(2, "0");
+            humanLocator = `${mins}:${secs}`;
+          } else if (locator.charStart !== undefined && locator.charEnd !== undefined) {
+            humanLocator = `Chars ${locator.charStart}–${locator.charEnd}`;
+          }
+
           return {
             number: idx + 1,
             sourceId: sId,
-            title: titleMap.get(sId) || "Untitled Source",
+            title: meta.title,
             chunkIndex: (p.payload?.chunkIndex as number) ?? 0,
             text: (p.payload?.text as string) || "",
             score: p.score,
+            locator,
+            humanLocator,
           };
         });
 
         contextString = citations
           .map(
             (c) =>
-              `[${c.number}] Source: "${c.title}" (Chunk ${c.chunkIndex})\nContent: ${c.text}`
+              `[${c.number}] Source: "${c.title}" (${c.humanLocator})\nContent: ${c.text}`
           )
           .join("\n\n");
       }
@@ -168,10 +185,11 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    const systemPrompt = `You are NoteBookLLM, an expert AI assistant.
-Answer the user's request accurately based primarily on the provided context sources below.
+    // Strict Grounding System Prompt
+    const systemPrompt = `You are Pensieve AI Notebook, an expert grounded research assistant.
+Answer the user's request accurately using ONLY the provided numbered context sources below.
 When using information from a context chunk, cite it directly in your response text using bracket format like [1], [2], etc.
-If the context does not contain enough information, provide a helpful answer based on general knowledge while noting what context was available.
+If the context does not contain enough information to answer the question, state that clearly and refuse to invent details outside the sources.
 
 === NUMBERED CONTEXT SOURCES ===
 ${contextString}
