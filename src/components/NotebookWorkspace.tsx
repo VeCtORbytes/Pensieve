@@ -5,11 +5,6 @@ import { X } from "lucide-react";
 import SourcePanel from "@/components/SourcePanel";
 import ChatPanel from "@/components/ChatPanel";
 
-/**
- * Two-pane workspace. The reference rail is a fixed column from `md` up and a
- * dismissible drawer below it, because at phone widths a 260px rail leaves the
- * conversation too narrow to read.
- */
 export default function NotebookWorkspace({
   notebookId,
   sourceCount,
@@ -27,9 +22,9 @@ export default function NotebookWorkspace({
   }, [railOpen]);
 
   return (
-    <div className="flex flex-1 overflow-hidden">
+    <div className="flex flex-1 overflow-hidden bg-[#090D14] text-[#E6EDF3]">
       {/* Reference rail — persistent from md up */}
-      <aside className="hidden md:flex md:w-[260px] lg:w-[300px] shrink-0 flex-col overflow-hidden border-r border-rule bg-vessel">
+      <aside className="hidden md:flex md:w-[260px] lg:w-[300px] shrink-0 flex-col overflow-hidden border-r border-[#222B3D] bg-[#090D14]">
         <SourcePanel notebookId={notebookId} />
       </aside>
 
@@ -40,22 +35,20 @@ export default function NotebookWorkspace({
             type="button"
             aria-label="Close sources"
             onClick={() => setRailOpen(false)}
-            className="absolute inset-0 bg-black/40"
+            className="absolute inset-0 bg-black/70 backdrop-blur-xs"
           />
           <aside
             role="dialog"
             aria-modal="true"
             aria-label="Sources"
-            className="relative flex w-[86%] max-w-[330px] flex-col bg-vessel shadow-2xl"
+            className="relative flex w-[86%] max-w-[330px] flex-col bg-[#090D14] shadow-2xl border-r border-[#222B3D]"
           >
-            {/* SourcePanel supplies its own "SOURCES (n)" header, so this is
-                just the drawer's close affordance. */}
-            <div className="flex justify-end border-b border-rule px-2 py-1.5">
+            <div className="flex justify-end border-b border-[#222B3D] px-2 py-1.5">
               <button
                 type="button"
                 aria-label="Close sources"
                 onClick={() => setRailOpen(false)}
-                className="rounded-lg p-1.5 text-neutral-400 transition hover:bg-neutral-200/60 hover:text-ink"
+                className="rounded-xl p-1.5 text-[#8B949E] transition hover:bg-[#111622] hover:text-[#E6EDF3]"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -67,9 +60,8 @@ export default function NotebookWorkspace({
         </div>
       )}
 
-      {/* Conversation. min-w-0 lets the text column shrink instead of forcing
-          the flex row wider than the viewport. */}
-      <section className="flex min-w-0 flex-1 flex-col bg-surface">
+      {/* Conversation column */}
+      <section className="flex min-w-0 flex-1 flex-col bg-[#090D14]">
         <ChatPanel
           notebookId={notebookId}
           sourceCount={sourceCount}

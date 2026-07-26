@@ -8,19 +8,20 @@ const config: Config = {
   ],
   theme: {
     extend: {
-      // The design tokens declared in globals.css, exposed as utilities so
-      // components can use `bg-accent` / `border-rule` instead of raw hex.
       colors: {
-        ink: "#141A22",
-        vessel: "#F5F7F8",
-        surface: "#FFFFFF",
-        rule: "#E2E7EA",
-        // Single brand accent. Also carries the "grounded / retrieved" meaning
-        // that used to have its own colour.
+        ink: "#E6EDF3",
+        muted: "#8B949E",
+        vessel: "#090D14",
+        surface: "#111622",
+        "surface-elevated": "#192030",
+        rule: "#222B3D",
         accent: {
-          DEFAULT: "#1D9E75",
-          fg: "#0B5C43",
+          DEFAULT: "#8B5CF6",
+          fg: "#38BDF8",
         },
+        glow: "#38BDF8",
+        found: "#10B981",
+        gold: "#F59E0B",
       },
     },
   },
