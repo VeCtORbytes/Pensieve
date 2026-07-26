@@ -11,6 +11,10 @@ import {
   X,
   FileText,
   MessageSquare,
+  Languages,
+  PanelLeft,
+  Download,
+  Trash2,
 } from "lucide-react";
 import { useAuth, SignInButton } from "@clerk/nextjs";
 import { CitationPayload, RetrievalTracePayload } from "@/app/api/chat/route";
@@ -18,7 +22,6 @@ import SourceViewerModal from "@/components/SourceViewerModal";
 import RetrievalTrace from "@/components/RetrievalTrace";
 import { VariantKind } from "@/lib/locator";
 import { useReadingVariant } from "@/hooks/useReadingVariant";
-import { Languages, PanelLeft } from "lucide-react";
 
 type LanguageOption = { kind: VariantKind; label: string };
 
@@ -279,76 +282,118 @@ export default function ChatPanel({
     handleSend();
   }
 
+  function handleExportChatMarkdown() {
+    if (messages.length === 0) return;
+    let mdContent = `# Pensieve Chat Research Thread\n\n`;
+    messages.forEach((m) => {
+      const roleName = m.role === "user" ? "User" : "Pensieve Assistant";
+      mdContent += `### ${roleName}\n${m.content}\n\n`;
+      if (m.citations && m.citations.length > 0) {
+        mdContent += `**Citations:**\n`;
+        m.citations.forEach((c) => {
+          mdContent += `- [${c.number}] ${c.title} (${c.humanLocator || ""})\n`;
+        });
+        mdContent += `\n`;
+      }
+    });
+
+    const blob = new Blob([mdContent], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Pensieve-Research-Thread-${notebookId}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
   return (
-    <div className="flex flex-col h-full bg-white relative overflow-hidden">
+    <div className="flex flex-col h-full bg-[#090D14] text-[#E6EDF3] relative overflow-hidden">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-200 bg-white px-4 py-3 md:px-6 md:py-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#222B3D] bg-[#090D14]/90 px-4 py-3 md:px-6 md:py-4">
         <div className="flex min-w-0 items-center gap-2.5">
           {onOpenSources && (
             <button
               type="button"
               onClick={onOpenSources}
               aria-label={`Show sources${sourceCount ? ` (${sourceCount})` : ""}`}
-              className="flex shrink-0 items-center gap-1 rounded-lg border border-neutral-200 px-2 py-1.5 text-[11px] font-medium text-neutral-600 transition hover:bg-neutral-50 md:hidden"
+              className="flex shrink-0 items-center gap-1 rounded-xl border border-[#222B3D] px-2.5 py-1.5 text-[11px] font-medium text-[#8B949E] transition hover:bg-[#111622] hover:text-[#E6EDF3] md:hidden"
             >
               <PanelLeft className="h-3.5 w-3.5" />
               {sourceCount ?? ""}
             </button>
           )}
 
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-ink text-white shadow-xs">
-            <Sparkles className="h-4 w-4" />
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#8B5CF6]/10 border border-[#8B5CF6]/30 text-[#8B5CF6] shadow-xs">
+            <Sparkles className="h-4 w-4 animate-pulse" />
           </div>
           <div className="min-w-0">
-            <h2 className="truncate text-sm font-semibold text-neutral-900">
+            <h2 className="truncate text-sm font-semibold text-[#E6EDF3]">
               Pensieve AI Assistant
             </h2>
-            <p className="hidden text-[11px] text-neutral-400 sm:block">
-              Answers drawn only from your sources
+            <p className="hidden text-[11px] text-[#8B949E] sm:block">
+              Answers grounded only in your sources
             </p>
           </div>
         </div>
 
-        {languageOptions.length > 1 && (
-          <div className="flex min-w-0 items-center gap-1.5">
-            <Languages className="hidden h-3.5 w-3.5 shrink-0 text-neutral-400 sm:block" />
-            <div className="flex max-w-full overflow-x-auto rounded-lg bg-neutral-100 p-0.5 text-[11px] font-medium">
-              {/* Auto follows the language of each question. */}
+        <div className="flex items-center gap-2">
+          {/* Chat Export & Clear Action Controls */}
+          {messages.length > 0 && (
+            <div className="flex items-center gap-1">
               <button
                 type="button"
-                onClick={resetVariant}
-                title="Answer in whatever language the question is asked in"
-                aria-pressed={!isExplicit}
-                className={`shrink-0 rounded-md px-2.5 py-1 transition ${
-                  !isExplicit
-                    ? "bg-white text-neutral-900 shadow-xs"
-                    : "text-neutral-500 hover:text-neutral-900"
-                }`}
+                onClick={handleExportChatMarkdown}
+                title="Export Research Thread as Markdown"
+                className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold bg-[#111622] hover:bg-[#192030] border border-[#222B3D] text-[#38BDF8] rounded-xl transition cursor-pointer"
               >
-                Auto
+                <Download className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Export Thread</span>
               </button>
-              {languageOptions.map((option) => {
-                const active = isExplicit && option.kind === variant;
-                return (
-                  <button
-                    key={option.kind}
-                    type="button"
-                    onClick={() => selectVariant(option.kind)}
-                    title={`Read sources and get answers in ${option.label}`}
-                    aria-pressed={active}
-                    className={`shrink-0 whitespace-nowrap rounded-md px-2.5 py-1 transition ${
-                      active
-                        ? "bg-white text-neutral-900 shadow-xs"
-                        : "text-neutral-500 hover:text-neutral-900"
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                );
-              })}
             </div>
-          </div>
-        )}
+          )}
+
+          {languageOptions.length > 1 && (
+            <div className="flex min-w-0 items-center gap-1.5">
+              <Languages className="hidden h-3.5 w-3.5 shrink-0 text-[#8B949E] sm:block" />
+              <div className="flex max-w-full overflow-x-auto rounded-xl bg-[#111622] border border-[#222B3D] p-0.5 text-[11px] font-medium">
+                {/* Auto follows the language of each question. */}
+                <button
+                  type="button"
+                  onClick={resetVariant}
+                  title="Answer in whatever language the question is asked in"
+                  aria-pressed={!isExplicit}
+                  className={`shrink-0 rounded-lg px-2.5 py-1 transition ${
+                    !isExplicit
+                      ? "bg-[#8B5CF6] text-white font-semibold shadow-xs"
+                      : "text-[#8B949E] hover:text-[#E6EDF3]"
+                  }`}
+                >
+                  Auto
+                </button>
+                {languageOptions.map((option) => {
+                  const active = isExplicit && option.kind === variant;
+                  return (
+                    <button
+                      key={option.kind}
+                      type="button"
+                      onClick={() => selectVariant(option.kind)}
+                      title={`Read sources and get answers in ${option.label}`}
+                      aria-pressed={active}
+                      className={`shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1 transition ${
+                        active
+                          ? "bg-[#8B5CF6] text-white font-semibold shadow-xs"
+                          : "text-[#8B949E] hover:text-[#E6EDF3]"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Messages Scroll Area */}

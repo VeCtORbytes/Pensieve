@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Play, Pause, Volume2, VolumeX, X, Sparkles, FileText } from "lucide-react";
+import { Play, Pause, Volume2, VolumeX, X, Sparkles, FileText, Download } from "lucide-react";
 
 interface AudioPlayerProps {
   audioUrl: string;
@@ -66,8 +66,17 @@ export default function AudioPlayer({ audioUrl, scriptText, onClose }: AudioPlay
     return `${m}:${s}`;
   }
 
+  function handleDownloadAudio() {
+    const a = document.createElement("a");
+    a.href = audioUrl;
+    a.download = "Pensieve-Audio-Overview.mp3";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
   return (
-    <div className="fixed bottom-6 right-6 z-50 max-w-md w-full bg-white border border-rule rounded-2xl shadow-2xl p-4 space-y-3 animate-in slide-in-from-bottom duration-200">
+    <div className="fixed bottom-6 right-6 z-50 max-w-md w-full bg-[#111622] border border-[#222B3D] rounded-3xl shadow-2xl p-5 space-y-3.5 animate-in slide-in-from-bottom duration-200 text-[#E6EDF3]">
       <audio
         ref={audioRef}
         src={audioUrl}
@@ -76,22 +85,37 @@ export default function AudioPlayer({ audioUrl, scriptText, onClose }: AudioPlay
       />
 
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-rule pb-2">
+      <div className="flex items-center justify-between border-b border-[#222B3D] pb-3">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-lg bg-accent text-white flex items-center justify-center">
-            <Sparkles className="w-3.5 h-3.5" />
+          <div className="w-7 h-7 rounded-xl bg-[#8B5CF6]/10 border border-[#8B5CF6]/30 text-[#8B5CF6] flex items-center justify-center">
+            <Sparkles className="w-4 h-4 animate-pulse" />
           </div>
-          <span className="text-xs font-serif-display font-medium text-ink">
-            AI Audio Overview
-          </span>
+          <div>
+            <h4 className="text-xs font-serif-display font-medium text-[#E6EDF3]">
+              AI Audio Overview
+            </h4>
+            <p className="text-[10px] text-[#8B949E]">Synthesized Podcast Discussion</p>
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-neutral-400 hover:text-neutral-600 p-1 cursor-pointer"
-        >
-          <X className="w-4 h-4" />
-        </button>
+
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={handleDownloadAudio}
+            title="Download MP3 Audio"
+            className="p-1.5 text-[#8B949E] hover:text-[#38BDF8] hover:bg-[#192030] rounded-xl transition cursor-pointer"
+          >
+            <Download className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            title="Close Audio Player"
+            className="p-1.5 text-[#8B949E] hover:text-[#E6EDF3] hover:bg-[#192030] rounded-xl transition cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Audio Controls & Progress */}
@@ -99,7 +123,7 @@ export default function AudioPlayer({ audioUrl, scriptText, onClose }: AudioPlay
         <button
           type="button"
           onClick={togglePlay}
-          className="w-10 h-10 rounded-full bg-ink text-white flex items-center justify-center hover:bg-accent transition shrink-0 cursor-pointer shadow-xs"
+          className="w-10 h-10 rounded-full bg-[#8B5CF6] hover:bg-[#7C3AED] text-white flex items-center justify-center transition shrink-0 cursor-pointer shadow-md"
         >
           {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
         </button>
@@ -111,9 +135,9 @@ export default function AudioPlayer({ audioUrl, scriptText, onClose }: AudioPlay
             max={duration || 100}
             value={currentTime}
             onChange={handleSeek}
-            className="w-full h-1.5 bg-neutral-200 rounded-lg appearance-none cursor-pointer accent-accent"
+            className="w-full h-1.5 bg-[#090D14] rounded-lg appearance-none cursor-pointer accent-[#8B5CF6]"
           />
-          <div className="flex justify-between text-[10px] font-mono text-neutral-400">
+          <div className="flex justify-between text-[10px] font-mono text-[#8B949E]">
             <span>{formatSecs(currentTime)}</span>
             <span>{formatSecs(duration)}</span>
           </div>
@@ -122,15 +146,15 @@ export default function AudioPlayer({ audioUrl, scriptText, onClose }: AudioPlay
         <button
           type="button"
           onClick={toggleMute}
-          className="text-neutral-400 hover:text-neutral-700 p-1 cursor-pointer shrink-0"
+          className="text-[#8B949E] hover:text-[#E6EDF3] p-1 cursor-pointer shrink-0"
         >
-          {isMuted ? <VolumeX className="w-4 h-4 text-red-500" /> : <Volume2 className="w-4 h-4" />}
+          {isMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4" />}
         </button>
       </div>
 
       {/* Script Text View */}
-      <div className="p-2.5 bg-vessel rounded-xl border border-rule space-y-1 max-h-28 overflow-y-auto text-xs leading-relaxed text-neutral-700">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 flex items-center gap-1">
+      <div className="p-3 bg-[#090D14] rounded-2xl border border-[#222B3D] space-y-1.5 max-h-28 overflow-y-auto text-xs leading-relaxed text-[#8B949E]">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-[#38BDF8] flex items-center gap-1">
           <FileText className="w-3 h-3" /> Script Transcript
         </p>
         <p className="whitespace-pre-wrap">{scriptText}</p>

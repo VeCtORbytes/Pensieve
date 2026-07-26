@@ -15,6 +15,9 @@ import {
   Languages,
   Loader2,
   AlertTriangle,
+  Copy,
+  Check,
+  Download,
 } from "lucide-react";
 import { Locator, SegmentSpan, VariantKind } from "@/lib/locator";
 import { spanForSegmentRange } from "@/lib/segments";
@@ -235,24 +238,33 @@ export default function SourceViewerModal({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  const [copied, setCopied] = useState(false);
+
+  function handleCopyText() {
+    if (!displayText) return;
+    navigator.clipboard.writeText(displayText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-label={source.title}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs animate-in fade-in duration-150 sm:p-6"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md animate-in fade-in duration-150 sm:p-6"
     >
       <div
-        className={`flex h-full w-full flex-col overflow-hidden bg-white shadow-2xl sm:max-w-4xl sm:rounded-2xl sm:border sm:border-neutral-200 ${
+        className={`flex h-full w-full flex-col overflow-hidden bg-[#111622] text-[#E6EDF3] shadow-2xl sm:max-w-4xl sm:rounded-3xl sm:border sm:border-[#222B3D] ${
           needsTallViewer ? "sm:h-[88vh]" : "sm:h-auto sm:max-h-[85vh]"
         }`}
       >
         {/* Modal Header */}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-200 bg-white px-4 py-3 sm:px-6 sm:py-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#222B3D] bg-[#090D14] px-4 py-3 sm:px-6 sm:py-4">
           <div className="flex min-w-0 items-center gap-3">
             <TypeBadge type={source.type} />
             <div className="min-w-0">
-              <h3 className="max-w-full truncate text-sm font-semibold text-neutral-900 sm:max-w-md">
+              <h3 className="max-w-full truncate text-sm font-semibold text-[#E6EDF3] sm:max-w-md">
                 {source.title}
               </h3>
               {source.url && (
@@ -260,7 +272,7 @@ export default function SourceViewerModal({
                   href={source.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[11px] text-neutral-400 hover:text-neutral-700 flex items-center gap-1 mt-0.5 truncate max-w-sm"
+                  className="text-[11px] text-[#8B949E] hover:text-[#38BDF8] flex items-center gap-1 mt-0.5 truncate max-w-sm"
                 >
                   <span className="truncate">{source.url}</span>
                   <ExternalLink className="w-3 h-3 shrink-0" />
@@ -270,6 +282,27 @@ export default function SourceViewerModal({
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Copy Extracted Text Action Button */}
+            {displayText && (
+              <button
+                type="button"
+                onClick={handleCopyText}
+                title="Copy Extracted Text"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#192030] hover:bg-[#222B3D] border border-[#222B3D] text-xs font-semibold text-[#E6EDF3] transition cursor-pointer"
+              >
+                {copied ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="text-emerald-400">Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5 text-[#38BDF8]" />
+                    <span className="hidden sm:inline">Copy Text</span>
+                  </>
+                )}
+              </button>
+            )}
             {showSwitcher && (
               <div className="flex items-center gap-1.5">
                 <Languages className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
