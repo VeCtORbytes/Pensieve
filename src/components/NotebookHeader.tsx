@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
 import { ArrowLeft, Trash2, Volume2, Search, Loader2, Sparkles } from "lucide-react";
 import { renameNotebook, deleteNotebook } from "@/app/actions/notebooks";
@@ -30,6 +30,18 @@ export default function NotebookHeader({
 
   // Study Tools state
   const [isStudyToolsOpen, setIsStudyToolsOpen] = useState(false);
+
+  // Global Command+K / Ctrl+K keyboard shortcut listener
+  useEffect(() => {
+    function handleGlobalKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setIsCmdPaletteOpen((prev) => !prev);
+      }
+    }
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, []);
 
   function save() {
     const clean = value.trim();

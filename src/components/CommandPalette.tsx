@@ -31,12 +31,14 @@ export default function CommandPalette({
   }, [isOpen, notebookId]);
 
   useEffect(() => {
+    if (!isOpen) return;
+
     function handleKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        if (isOpen) onClose();
+        onClose();
       }
-      if (e.key === "Escape" && isOpen) {
+      if (e.key === "Escape") {
         onClose();
       }
     }
@@ -60,8 +62,14 @@ export default function CommandPalette({
   ].filter((p) => p.toLowerCase().includes(query.toLowerCase()));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 backdrop-blur-xs pt-20 p-4">
-      <div className="bg-white rounded-3xl max-w-xl w-full shadow-2xl overflow-hidden border border-[#E2E7EA] text-[#141A22] animate-in fade-in zoom-in-95 duration-150">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 backdrop-blur-xs pt-20 p-4"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white rounded-3xl max-w-xl w-full shadow-2xl overflow-hidden border border-[#E2E7EA] text-[#141A22] animate-in fade-in zoom-in-95 duration-150"
+      >
         {/* Search Bar */}
         <div className="flex items-center px-4 py-1 border-b border-[#E2E7EA] bg-[#F5F7F8]">
           <Search className="w-4 h-4 text-neutral-400 shrink-0" />
