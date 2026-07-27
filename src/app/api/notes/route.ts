@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
 import { PrismaClient } from "@prisma/client";
 
-function getNoteClient() {
-  return (db as any).note || new PrismaClient().note;
-}
+const prisma = new PrismaClient();
 
 export async function GET(req: NextRequest) {
   try {
@@ -15,8 +12,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "notebookId is required" }, { status: 400 });
     }
 
-    const noteClient = getNoteClient();
-    const notes = await noteClient.findMany({
+    const notes = await prisma.note.findMany({
       where: { notebookId },
       orderBy: { updatedAt: "desc" },
     });
@@ -35,8 +31,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "notebookId is required" }, { status: 400 });
     }
 
-    const noteClient = getNoteClient();
-    const note = await noteClient.create({
+    const note = await prisma.note.create({
       data: {
         notebookId,
         title: title.trim() || "Untitled Note",
