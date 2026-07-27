@@ -97,42 +97,45 @@ export default function ChatPanel({
     scrollToBottom();
   }, [messages, isLoading]);
 
-  // Load chat history from backend database
-  useEffect(() => {
-    let isMounted = true;
+  // Load chat history & auto-poll every 3s so newly chunked source overviews appear instantly
+  const fetchMessages = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/chat?notebookId=${notebookId}`);
+      if (!res.ok) throw new Error("Failed to load conversation history");
 
-    async function loadChatHistory() {
-      try {
-        setIsHistoryLoading(true);
-        const res = await fetch(`/api/chat?notebookId=${notebookId}`);
-        if (!res.ok) throw new Error("Failed to load conversation history");
+      const data: { messages: DBMessage[] } = await res.json();
+      const formatted: MessageItem[] = (data.messages || []).map((msg) => ({
+        id: msg.id,
+        role: msg.role as "user" | "assistant",
+        content: msg.content,
+        citations: Array.isArray(msg.citations)
+          ? (msg.citations as CitationPayload[])
+          : null,
+        trace: null,
+      }));
 
-        const data: { messages: DBMessage[] } = await res.json();
-        if (isMounted) {
-          const formatted: MessageItem[] = (data.messages || []).map((msg) => ({
-            id: msg.id,
-            role: msg.role as "user" | "assistant",
-            content: msg.content,
-            citations: Array.isArray(msg.citations)
-              ? (msg.citations as CitationPayload[])
-              : null,
-            trace: null,
-          }));
-          setMessages(formatted);
+      setMessages((prev) => {
+        // Prevent unnecessary state updates if messages haven't changed
+        if (
+          prev.length !== formatted.length ||
+          (formatted.length > 0 && prev[prev.length - 1]?.id !== formatted[formatted.length - 1]?.id)
+        ) {
+          return formatted;
         }
-      } catch (err) {
-        console.error("Error loading chat history:", err);
-      } finally {
-        if (isMounted) setIsHistoryLoading(false);
-      }
+        return prev;
+      });
+    } catch (err) {
+      console.error("Error polling chat history:", err);
+    } finally {
+      setIsHistoryLoading(false);
     }
-
-    loadChatHistory();
-
-    return () => {
-      isMounted = false;
-    };
   }, [notebookId]);
+
+  useEffect(() => {
+    fetchMessages();
+    const interval = setInterval(fetchMessages, 3000);
+    return () => clearInterval(interval);
+  }, [fetchMessages]);
 
   const handleSend = async (textToSend?: string) => {
     const text = textToSend || input;
