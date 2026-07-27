@@ -9,7 +9,7 @@ export default function AuthControls() {
         <SignInButton mode="modal">
           <button
             type="button"
-            className="px-3.5 py-1.5 text-xs font-semibold text-ink bg-white border border-rule rounded-xl hover:border-accent shadow-xs transition cursor-pointer"
+            className="px-4 py-2 text-xs font-semibold text-ink bg-white border border-rule rounded-xl hover:border-accent shadow-xs transition cursor-pointer"
           >
             Sign In
           </button>
@@ -17,7 +17,7 @@ export default function AuthControls() {
         <SignUpButton mode="modal">
           <button
             type="button"
-            className="px-3.5 py-1.5 text-xs font-semibold text-white bg-ink rounded-xl hover:bg-accent shadow-xs transition cursor-pointer"
+            className="px-4 py-2 text-xs font-semibold text-white bg-ink rounded-xl hover:bg-accent shadow-xs transition cursor-pointer"
           >
             Sign Up
           </button>
@@ -29,7 +29,7 @@ export default function AuthControls() {
           afterSignOutUrl="/"
           appearance={{
             elements: {
-              avatarBox: "w-8 h-8 rounded-full border border-rule",
+              avatarBox: "w-9 h-9 sm:w-10 sm:h-10 rounded-full border-2 border-rule shadow-2xs hover:border-accent transition",
             },
           }}
         />

@@ -517,10 +517,10 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
     >
       {/* Avatar */}
       <div
-        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold overflow-hidden border border-rule ${
+        className={`flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold overflow-hidden border-2 border-rule shadow-2xs ${
           isUser
-            ? "bg-ink text-white shadow-xs"
-            : "bg-accent text-white shadow-xs"
+            ? "bg-accent/10 text-accent border-accent/30"
+            : "bg-[#141A22] text-white"
         }`}
       >
         {isUser ? (
@@ -528,14 +528,14 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
             <img
               src={userImageUrl}
               alt="User Avatar"
-              className="w-full h-full object-cover rounded-full"
+              className="h-full w-full object-cover"
               onError={() => setImageError(true)}
             />
           ) : (
-            <User className="w-4 h-4" />
+            <User className="h-5 w-5" />
           )
         ) : (
-          <Bot className="w-4 h-4" />
+          <Bot className="h-5 w-5" />
         )}
       </div>
 

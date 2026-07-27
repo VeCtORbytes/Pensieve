@@ -56,33 +56,33 @@ export default function NotebookHeader({
 
   return (
     <>
-      <header className="flex items-center gap-2 border-b border-rule bg-white/90 backdrop-blur-md px-3 py-2.5 sm:gap-3 sm:px-6 sm:py-3 sticky top-0 z-30 text-ink">
+      <header className="flex items-center gap-3 border-b border-rule bg-white/95 backdrop-blur-md px-4 py-3 sm:gap-4 sm:px-8 sm:py-3.5 sticky top-0 z-30 text-ink">
         {/* Pensieve Logo & Brand Title Link to Home */}
         <Link
           href="/"
           aria-label="Pensieve Home"
           title="Back to all notebooks"
-          className="flex items-center gap-2 shrink-0 rounded-xl px-2 py-1 hover:bg-vessel transition group cursor-pointer"
+          className="flex items-center gap-2.5 shrink-0 rounded-2xl px-2 py-1 hover:bg-vessel transition group cursor-pointer"
         >
-          <PensieveLogo className="w-7 h-7 group-hover:scale-105 transition-transform" />
-          <span className="font-serif-display text-lg font-normal text-ink group-hover:text-accent transition tracking-wide hidden sm:inline">
+          <PensieveLogo className="w-9 h-9 sm:w-10 sm:h-10 group-hover:scale-105 transition-transform" />
+          <span className="font-serif-display text-xl sm:text-2xl font-medium text-ink group-hover:text-accent transition tracking-wide hidden sm:inline">
             Pensieve
           </span>
-          <span className="text-neutral-300 font-light hidden sm:inline">/</span>
+          <span className="text-neutral-300 font-light hidden sm:inline text-xl">/</span>
         </Link>
 
         {/* Back Arrow for Mobile View */}
         <Link
           href="/"
           aria-label="Back to home"
-          className="sm:hidden shrink-0 rounded-xl p-1.5 text-neutral-400 hover:text-ink hover:bg-vessel transition"
+          className="sm:hidden shrink-0 rounded-xl p-2 text-neutral-400 hover:text-ink hover:bg-vessel transition"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-5 w-5" />
         </Link>
 
         {/* Notebook Title Input */}
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-found shrink-0" />
+        <div className="flex min-w-0 flex-1 items-center gap-2.5">
+          <div className="w-2.5 h-2.5 rounded-full bg-found shrink-0" />
           <input
             value={value}
             aria-label="Notebook title"
@@ -95,7 +95,7 @@ export default function NotebookHeader({
                 e.currentTarget.blur();
               }
             }}
-            className="w-full max-w-[min(28ch,100%)] truncate rounded-lg border border-transparent bg-transparent px-2 py-1 font-serif-display text-lg font-normal text-ink outline-none transition hover:border-rule hover:bg-white focus:border-accent focus:bg-white sm:max-w-[40ch]"
+            className="w-full max-w-[min(30ch,100%)] truncate rounded-xl border border-transparent bg-transparent px-2.5 py-1 font-serif-display text-xl sm:text-2xl font-medium text-ink outline-none transition hover:border-rule hover:bg-white focus:border-accent focus:bg-white sm:max-w-[42ch]"
           />
           {isPending && (
             <span className="hidden shrink-0 font-mono text-xs text-neutral-400 sm:inline">
@@ -109,9 +109,9 @@ export default function NotebookHeader({
           type="button"
           onClick={() => setIsVisualizerOpen(true)}
           aria-label="Open ingestion pipeline visualizer"
-          className="hidden shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border border-rule bg-white px-3 py-1.5 text-xs font-semibold text-ink shadow-xs transition hover:border-accent md:flex"
+          className="hidden shrink-0 cursor-pointer items-center gap-2 rounded-xl border border-rule bg-white px-3.5 py-2 text-xs font-semibold text-ink shadow-xs transition hover:border-accent md:flex"
         >
-          <Waypoints className="h-3.5 w-3.5 text-accent" />
+          <Waypoints className="h-4 w-4 text-accent" />
           <span className="hidden lg:inline">Pipeline</span>
         </button>
 
@@ -119,11 +119,11 @@ export default function NotebookHeader({
         <button
           type="button"
           onClick={() => setIsCmdPaletteOpen(true)}
-          className="hidden shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border border-rule bg-white px-3 py-1.5 font-mono text-xs text-neutral-600 shadow-xs transition hover:border-accent md:flex"
+          className="hidden shrink-0 cursor-pointer items-center gap-2 rounded-xl border border-rule bg-white px-3.5 py-2 font-mono text-xs text-neutral-600 shadow-xs transition hover:border-accent md:flex"
         >
-          <Search className="h-3.5 w-3.5 text-neutral-400" />
+          <Search className="h-4 w-4 text-neutral-400" />
           <span>Search</span>
-          <kbd className="rounded border border-rule bg-vessel px-1 text-[10px] text-neutral-700">⌘K</kbd>
+          <kbd className="rounded border border-rule bg-vessel px-1.5 py-0.5 text-[11px] font-semibold text-neutral-700">⌘K</kbd>
         </button>
 
         {/* Delete Notebook Button */}
@@ -132,9 +132,9 @@ export default function NotebookHeader({
           onClick={remove}
           aria-label="Delete notebook"
           title="Delete notebook"
-          className="shrink-0 cursor-pointer rounded-xl p-2 text-neutral-400 transition hover:bg-red-50 hover:text-red-600"
+          className="shrink-0 cursor-pointer rounded-xl p-2.5 text-neutral-400 transition hover:bg-red-50 hover:text-red-600"
         >
-          <Trash2 className="h-4 w-4" />
+          <Trash2 className="h-5 w-5" />
         </button>
 
         {/* Auth Controls */}
