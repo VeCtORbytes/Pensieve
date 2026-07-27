@@ -17,7 +17,7 @@ import {
   StickyNote,
   Check,
 } from "lucide-react";
-import { useAuth, useUser, SignInButton } from "@clerk/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
 import { CitationPayload, RetrievalTracePayload } from "@/app/api/chat/route";
 import SourceViewerModal from "@/components/SourceViewerModal";
 import { VariantKind } from "@/lib/locator";
@@ -65,7 +65,6 @@ export default function ChatPanel({
   onToggleSources,
   onToggleStudio,
 }: ChatPanelProps) {
-  const { isSignedIn } = useAuth();
   const { user } = useUser();
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [input, setInput] = useState("");
@@ -393,44 +392,28 @@ export default function ChatPanel({
 
       {/* Input Form */}
       <div className="p-4 border-t border-rule bg-white">
-        {!isSignedIn ? (
-          <div className="flex items-center justify-between gap-3 p-3 bg-vessel border border-rule rounded-2xl text-xs">
-            <span className="text-ink font-medium">
-              Sign in to start chatting with this notebook.
-            </span>
-            <SignInButton mode="modal">
-              <button
-                type="button"
-                className="px-4 py-2 bg-ink hover:bg-accent text-white font-semibold rounded-xl shadow-sm transition cursor-pointer text-xs shrink-0"
-              >
-                Sign In to Chat
-              </button>
-            </SignInButton>
-          </div>
-        ) : (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSend();
-            }}
-            className="flex items-center gap-2 bg-vessel p-1.5 rounded-2xl border border-rule focus-within:border-accent focus-within:ring-1 focus-within:ring-accent transition shadow-2xs"
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSend();
+          }}
+          className="flex items-center gap-2 bg-vessel p-1.5 rounded-2xl border border-rule focus-within:border-accent focus-within:ring-1 focus-within:ring-accent transition shadow-2xs"
+        >
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Ask a question about your sources..."
+            className="flex-1 bg-transparent px-3 py-2 text-xs text-ink placeholder:text-neutral-400 outline-none"
+          />
+          <button
+            type="submit"
+            disabled={!input.trim() || isLoading}
+            className="p-2.5 rounded-xl bg-ink text-white hover:bg-accent disabled:opacity-40 transition cursor-pointer shrink-0"
           >
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask a question about your sources..."
-              className="flex-1 bg-transparent px-3 py-2 text-xs text-ink placeholder:text-neutral-400 outline-none"
-            />
-            <button
-              type="submit"
-              disabled={!input.trim() || isLoading}
-              className="p-2.5 rounded-xl bg-ink text-white hover:bg-accent disabled:opacity-40 transition cursor-pointer shrink-0"
-            >
-              <Send className="w-4 h-4" />
-            </button>
-          </form>
-        )}
+            <Send className="w-4 h-4" />
+          </button>
+        </form>
       </div>
 
       {/* Source Viewer Modal */}

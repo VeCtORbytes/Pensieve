@@ -67,9 +67,6 @@ export interface CitationPayload {
 
 export async function GET(req: NextRequest) {
   const { userId } = await auth();
-  if (!userId) {
-    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-  }
 
   const { searchParams } = new URL(req.url);
   const notebookId = searchParams.get("notebookId");
@@ -78,7 +75,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "notebookId parameter is required" }, { status: 400 });
   }
 
-  const { error } = await loadOwnedNotebook(notebookId, userId);
+  const { error } = await loadOwnedNotebook(notebookId, userId || null);
   if (error) return error;
 
   const messages = await db.message.findMany({
@@ -86,16 +83,12 @@ export async function GET(req: NextRequest) {
     orderBy: { createdAt: "asc" },
   });
 
-  return NextResponse.json(messages);
+  return NextResponse.json({ messages });
 }
 
 export async function POST(req: NextRequest) {
   try {
     const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Authentication required to chat" }, { status: 401 });
-    }
-
     const { messages, notebookId, variant } = await req.json();
 
     if (!notebookId || !Array.isArray(messages) || messages.length === 0) {
@@ -105,7 +98,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { error: notebookError } = await loadOwnedNotebook(notebookId, userId);
+    const { error: notebookError } = await loadOwnedNotebook(notebookId, userId || null);
     if (notebookError) return notebookError;
 
     const explicitVariant: VariantKind | null = isVariantKind(variant) ? variant : null;
