@@ -83,7 +83,7 @@ export default function StudyToolsModal({
         setFlashcards(data.flashcards || []);
       } catch (err: any) {
         setError(err.message || "Failed to load flashcards");
-      } flexily: {
+      } finally {
         setIsLoadingFlashcards(false);
       }
     }
@@ -139,299 +139,292 @@ export default function StudyToolsModal({
   }, 0);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-3 sm:p-6 animate-in fade-in duration-150">
-      <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] p-5 sm:p-7 shadow-2xl border border-rule text-ink flex flex-col overflow-hidden">
-        {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-rule pb-3">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-purple-500/10 text-purple-600">
-              <Layers className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-base font-semibold text-ink">
-                Study Tools & Flashcard Deck
-              </h2>
-              <p className="text-[11px] text-neutral-500">
-                Interactive flashcards & quizzes in your language
-              </p>
-            </div>
+    <div className="flex flex-col gap-5 text-ink">
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-rule pb-3">
+        <div className="flex items-center gap-2.5">
+          <Layers className="w-4 h-4 text-accent" />
+          <div>
+            <h2 className="text-sm font-semibold text-ink">
+              Study Tools
+            </h2>
+            <p className="text-[11px] text-neutral-500">
+              Interactive flashcards & quizzes in your language
+            </p>
           </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="p-1.5 text-neutral-400 hover:text-ink hover:bg-vessel rounded-lg transition cursor-pointer"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Language Selector & Tab Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-rule pb-3 text-xs">
+        {/* Tab Navigation */}
+        <div className="flex gap-4 font-medium">
+          <button
+            type="button"
+            onClick={() => setActiveTab("flashcards")}
+            className={`flex items-center gap-2 pb-1 border-b-2 transition cursor-pointer ${
+              activeTab === "flashcards"
+                ? "border-accent text-accent font-semibold"
+                : "border-transparent text-neutral-500 hover:text-ink"
+            }`}
+          >
+            <Layers className="w-4 h-4" />
+            <span>Flashcards ({flashcards.length})</span>
+          </button>
 
           <button
             type="button"
-            onClick={onClose}
-            className="p-2 text-neutral-400 hover:text-ink hover:bg-vessel rounded-xl transition cursor-pointer"
+            onClick={() => setActiveTab("quiz")}
+            className={`flex items-center gap-2 pb-1 border-b-2 transition cursor-pointer ${
+              activeTab === "quiz"
+                ? "border-accent text-accent font-semibold"
+                : "border-transparent text-neutral-500 hover:text-ink"
+            }`}
           >
-            <X className="w-5 h-5" />
+            <HelpCircle className="w-4 h-4" />
+            <span>Quiz ({quizQuestions.length})</span>
           </button>
         </div>
 
-        {/* Language Selector & Tab Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-rule py-3 text-xs">
-          {/* Tab Navigation */}
-          <div className="flex gap-4 font-medium">
-            <button
-              type="button"
-              onClick={() => setActiveTab("flashcards")}
-              className={`flex items-center gap-2 pb-1 border-b-2 transition cursor-pointer ${
-                activeTab === "flashcards"
-                  ? "border-purple-600 text-purple-600 font-semibold"
-                  : "border-transparent text-neutral-500 hover:text-ink"
-              }`}
-            >
-              <Layers className="w-4 h-4" />
-              <span>Flashcards ({flashcards.length})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab("quiz")}
-              className={`flex items-center gap-2 pb-1 border-b-2 transition cursor-pointer ${
-                activeTab === "quiz"
-                  ? "border-purple-600 text-purple-600 font-semibold"
-                  : "border-transparent text-neutral-500 hover:text-ink"
-              }`}
-            >
-              <HelpCircle className="w-4 h-4" />
-              <span>Quiz ({quizQuestions.length})</span>
-            </button>
-          </div>
-
-          {/* Target Language Dropdown */}
-          <div className="flex items-center gap-1.5 bg-vessel border border-rule px-2.5 py-1 rounded-xl shadow-2xs">
-            <Languages className="w-3.5 h-3.5 text-purple-600 shrink-0" />
-            <select
-              value={selectedLanguage}
-              onChange={(e) => setSelectedLanguage(e.target.value)}
-              className="text-xs bg-transparent text-ink font-semibold outline-none cursor-pointer"
-            >
-              {SUPPORTED_LANGUAGES.map((lang) => (
-                <option key={lang.code} value={lang.code}>
-                  {lang.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Modal Scrollable Body */}
-        <div className="flex-1 overflow-y-auto py-4 space-y-4">
-          {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700">
-              {error}
-            </div>
-          )}
-
-          {/* TAB 1: 3D FLIP FLASHCARDS */}
-          {activeTab === "flashcards" && (
-            <div className="flex flex-col items-center justify-between space-y-5">
-              {isLoadingFlashcards ? (
-                <div className="w-full space-y-5" aria-label="Generating flashcards">
-                  <div className="w-full h-64 rounded-3xl bg-vessel animate-pulse flex items-center justify-center text-xs text-neutral-500 font-medium border border-rule">
-                    Generating Flashcards in {selectedLanguage}...
-                  </div>
-                  <div className="flex items-center justify-between w-full pt-1">
-                    <div className="h-9 w-24 rounded-xl bg-vessel animate-pulse" />
-                    <div className="h-4 w-16 rounded bg-vessel animate-pulse" />
-                    <div className="h-9 w-20 rounded-xl bg-vessel animate-pulse" />
-                  </div>
-                </div>
-              ) : flashcards.length === 0 ? (
-                <div className="py-12 text-center text-neutral-400 space-y-2">
-                  <BookOpen className="w-8 h-8 mx-auto text-neutral-300" />
-                  <p className="text-xs">No flashcards available. Add text sources to generate study cards.</p>
-                </div>
-              ) : (
-                <>
-                  {/* 3D Flip Card Container */}
-                  <div
-                    onClick={() => setIsFlipped(!isFlipped)}
-                    className="w-full h-64 cursor-pointer perspective-1000 group select-none"
-                  >
-                    <div
-                      className={`relative w-full h-full duration-500 rounded-3xl transition-transform transform-style-3d shadow-md ${
-                        isFlipped ? "rotate-y-180" : ""
-                      }`}
-                    >
-                      {/* Front Side */}
-                      <div className="absolute inset-0 w-full h-full bg-vessel border border-rule group-hover:border-purple-500 rounded-3xl p-5 flex flex-col justify-between backface-hidden shadow-xs">
-                        <div className="flex items-center justify-between">
-                          <span className="px-2.5 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-600 text-[10px] font-semibold uppercase tracking-wider">
-                            {currentCard.topic}
-                          </span>
-                          <span className="text-[10px] text-neutral-400 font-mono">
-                            Click to flip
-                          </span>
-                        </div>
-
-                        <div className="my-auto text-center space-y-3">
-                          <p className="text-sm font-medium text-ink leading-relaxed">
-                            "{currentCard.question}"
-                          </p>
-                        </div>
-
-                        <div className="text-center text-[10px] text-neutral-400">
-                          {currentCard.sourceTitle && `Source: ${currentCard.sourceTitle}`}
-                        </div>
-                      </div>
-
-                      {/* Back Side (Rotated 180deg) */}
-                      <div className="absolute inset-0 w-full h-full bg-white border border-emerald-500 rounded-3xl p-5 flex flex-col justify-between backface-hidden rotate-y-180 shadow-md">
-                        <div className="flex items-center justify-between">
-                          <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 text-[10px] font-semibold uppercase tracking-wider">
-                            Answer
-                          </span>
-                          <span className="text-[10px] text-neutral-400 font-mono">
-                            Answer revealed
-                          </span>
-                        </div>
-
-                        <div className="my-auto text-center">
-                          <p className="text-xs text-ink leading-relaxed">
-                            {currentCard.answer}
-                          </p>
-                        </div>
-
-                        <div className="text-center text-[10px] text-emerald-600 font-mono">
-                          Grounded in your sources ({selectedLanguage})
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Card Controls */}
-                  <div className="flex items-center justify-between w-full pt-1">
-                    <button
-                      type="button"
-                      onClick={handlePrevCard}
-                      className="flex items-center gap-1 px-3.5 py-2 rounded-xl bg-vessel hover:bg-neutral-100 border border-rule text-xs font-semibold text-ink transition cursor-pointer"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                      Previous
-                    </button>
-
-                    <span className="text-xs font-mono text-neutral-500">
-                      <strong className="text-purple-600">{currentCardIndex + 1}</strong> / {flashcards.length}
-                    </span>
-
-                    <button
-                      type="button"
-                      onClick={handleNextCard}
-                      className="flex items-center gap-1 px-3.5 py-2 rounded-xl bg-ink hover:bg-purple-600 text-xs font-semibold text-white transition cursor-pointer shadow-xs"
-                    >
-                      Next
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
-          {/* TAB 2: SELF-TEST QUIZ */}
-          {activeTab === "quiz" && (
-            <div className="flex-1 space-y-4">
-              {isLoadingQuiz ? (
-                <div className="space-y-4" aria-label="Generating quiz">
-                  <div className="h-11 w-full rounded-xl bg-vessel border border-rule animate-pulse flex items-center justify-center text-xs text-neutral-500 font-medium">
-                    Generating Quiz in {selectedLanguage}...
-                  </div>
-                  {[0, 1, 2].map((i) => (
-                    <div key={i} className="p-4 rounded-xl bg-vessel/80 border border-rule space-y-3">
-                      <div className="h-4 w-3/4 rounded bg-rule animate-pulse" />
-                      <div className="grid grid-cols-1 gap-2">
-                        <div className="h-10 rounded-lg bg-rule animate-pulse" />
-                        <div className="h-10 rounded-lg bg-rule animate-pulse" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : quizQuestions.length === 0 ? (
-                <div className="py-12 text-center text-neutral-400 space-y-2">
-                  <HelpCircle className="w-8 h-8 mx-auto text-neutral-300" />
-                  <p className="text-xs">No quiz questions available. Add text sources to generate quiz.</p>
-                </div>
-              ) : (
-                <>
-                  {/* Score Tracker */}
-                  <div className="flex items-center justify-between p-3.5 bg-vessel rounded-xl border border-rule text-xs">
-                    <span className="font-semibold text-ink">Progress ({selectedLanguage})</span>
-                    <span className="font-mono text-xs text-purple-600 font-bold">
-                      {Object.keys(userAnswers).length}/{quizQuestions.length} · {quizScore}/{quizQuestions.length}
-                    </span>
-                  </div>
-
-                  {/* Question Cards */}
-                  {quizQuestions.map((q, qIndex) => {
-                    const selectedOpt = userAnswers[q.id];
-                    const isAnswered = selectedOpt !== undefined;
-
-                    return (
-                      <div
-                        key={q.id}
-                        className="p-4 rounded-xl bg-vessel/80 border border-rule space-y-3"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <h4 className="text-xs font-semibold text-ink leading-relaxed">
-                            {qIndex + 1}. {q.question}
-                          </h4>
-                          {q.sourceTitle && (
-                            <span className="text-[10px] text-neutral-400 font-mono shrink-0">
-                              {q.sourceTitle}
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="grid grid-cols-1 gap-2">
-                          {q.options.map((opt, optIndex) => {
-                            let optStyle = "bg-white border-rule text-ink hover:border-purple-500";
-
-                            if (isAnswered) {
-                              if (optIndex === q.correctIndex) {
-                                optStyle = "bg-emerald-50 border-emerald-500 text-emerald-800 font-semibold";
-                              } else if (optIndex === selectedOpt) {
-                                optStyle = "bg-red-50 border-red-500 text-red-800";
-                              } else {
-                                optStyle = "bg-white border-rule text-neutral-400 opacity-50";
-                              }
-                            }
-
-                            return (
-                              <button
-                                key={optIndex}
-                                type="button"
-                                disabled={isAnswered}
-                                onClick={() => handleOptionSelect(q.id, optIndex)}
-                                className={`p-3 rounded-lg border text-left text-xs transition cursor-pointer flex items-center justify-between ${optStyle}`}
-                              >
-                                <span>{opt}</span>
-                                {isAnswered && optIndex === q.correctIndex && (
-                                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 ml-2" />
-                                )}
-                                {isAnswered && optIndex === selectedOpt && optIndex !== q.correctIndex && (
-                                  <XCircle className="w-4 h-4 text-red-600 shrink-0 ml-2" />
-                                )}
-                              </button>
-                            );
-                          })}
-                        </div>
-
-                        {/* Explanation Feedback */}
-                        {isAnswered && (
-                          <div className="p-2.5 rounded-lg bg-white border border-rule text-[11px] text-neutral-600 space-y-1">
-                            <span className="font-semibold text-purple-600 block">Explanation:</span>
-                            <p>{q.explanation}</p>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </>
-              )}
-            </div>
-          )}
+        {/* Target Language Dropdown */}
+        <div className="flex items-center gap-1.5 bg-surface border border-rule px-2.5 py-1 rounded-xl shadow-2xs">
+          <Languages className="w-3.5 h-3.5 text-accent shrink-0" />
+          <select
+            value={selectedLanguage}
+            onChange={(e) => setSelectedLanguage(e.target.value)}
+            className="text-xs bg-transparent text-ink font-semibold outline-none cursor-pointer"
+          >
+            {SUPPORTED_LANGUAGES.map((lang) => (
+              <option key={lang.code} value={lang.code}>
+                {lang.label}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
+
+      {error && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700">
+          {error}
+        </div>
+      )}
+
+      {/* TAB 1: 3D FLIP FLASHCARDS */}
+      {activeTab === "flashcards" && (
+        <div className="flex-1 flex flex-col items-center justify-between space-y-5">
+          {isLoadingFlashcards ? (
+            <div className="w-full space-y-5" aria-label="Generating flashcards">
+              <div className="w-full h-64 rounded-3xl bg-rule animate-pulse flex items-center justify-center text-xs text-neutral-500 font-medium">
+                Generating Flashcards in {selectedLanguage}...
+              </div>
+              <div className="flex items-center justify-between w-full pt-1">
+                <div className="h-9 w-24 rounded-xl bg-rule animate-pulse" />
+                <div className="h-4 w-16 rounded bg-rule animate-pulse" />
+                <div className="h-9 w-20 rounded-xl bg-rule animate-pulse" />
+              </div>
+            </div>
+          ) : flashcards.length === 0 ? (
+            <div className="py-12 text-center text-neutral-400 space-y-2">
+              <BookOpen className="w-8 h-8 mx-auto text-neutral-300" />
+              <p className="text-xs">No flashcards available. Add text sources to generate study cards.</p>
+            </div>
+          ) : (
+            <>
+              {/* 3D Flip Card Container */}
+              <div
+                onClick={() => setIsFlipped(!isFlipped)}
+                className="w-full h-64 cursor-pointer perspective-1000 group select-none"
+              >
+                <div
+                  className={`relative w-full h-full duration-500 rounded-3xl transition-transform transform-style-3d shadow-md ${
+                    isFlipped ? "rotate-y-180" : ""
+                  }`}
+                >
+                  {/* Front Side */}
+                  <div className="absolute inset-0 w-full h-full bg-vessel border border-rule group-hover:border-accent rounded-3xl p-5 flex flex-col justify-between backface-hidden shadow-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="px-2.5 py-1 rounded-full bg-accent/10 border border-accent/20 text-accent text-[10px] font-semibold uppercase tracking-wider">
+                        {currentCard.topic}
+                      </span>
+                      <span className="text-[10px] text-neutral-400 font-mono">
+                        Click to flip
+                      </span>
+                    </div>
+
+                    <div className="my-auto text-center space-y-3">
+                      <p className="text-sm font-medium text-ink leading-relaxed">
+                        "{currentCard.question}"
+                      </p>
+                    </div>
+
+                    <div className="text-center text-[10px] text-neutral-400">
+                      {currentCard.sourceTitle && `Source: ${currentCard.sourceTitle}`}
+                    </div>
+                  </div>
+
+                  {/* Back Side (Rotated 180deg) */}
+                  <div className="absolute inset-0 w-full h-full bg-surface border border-found rounded-3xl p-5 flex flex-col justify-between backface-hidden rotate-y-180 shadow-md">
+                    <div className="flex items-center justify-between">
+                      <span className="px-2.5 py-1 rounded-full bg-found/10 border border-found/20 text-found text-[10px] font-semibold uppercase tracking-wider">
+                        Answer
+                      </span>
+                      <span className="text-[10px] text-neutral-400 font-mono">
+                        Answer revealed
+                      </span>
+                    </div>
+
+                    <div className="my-auto text-center">
+                      <p className="text-xs text-ink leading-relaxed">
+                        {currentCard.answer}
+                      </p>
+                    </div>
+
+                    <div className="text-center text-[10px] text-found font-mono">
+                      Grounded in your sources ({selectedLanguage})
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card Controls */}
+              <div className="flex items-center justify-between w-full pt-1">
+                <button
+                  type="button"
+                  onClick={handlePrevCard}
+                  className="flex items-center gap-1 px-3 py-2 rounded-xl bg-vessel hover:bg-neutral-100 border border-rule text-xs font-semibold text-ink transition cursor-pointer"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Previous
+                </button>
+
+                <span className="text-xs font-mono text-neutral-500">
+                  <strong className="text-accent">{currentCardIndex + 1}</strong> / {flashcards.length}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={handleNextCard}
+                  className="flex items-center gap-1 px-3 py-2 rounded-xl bg-ink hover:bg-accent text-xs font-semibold text-white transition cursor-pointer shadow-xs"
+                >
+                  Next
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* TAB 2: SELF-TEST QUIZ */}
+      {activeTab === "quiz" && (
+        <div className="flex-1 space-y-5">
+          {isLoadingQuiz ? (
+            <div className="space-y-4" aria-label="Generating quiz">
+              <div className="h-11 w-full rounded-xl bg-rule animate-pulse flex items-center justify-center text-xs text-neutral-500 font-medium">
+                Generating Quiz in {selectedLanguage}...
+              </div>
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="p-4 rounded-xl bg-vessel/80 border border-rule space-y-3">
+                  <div className="h-4 w-3/4 rounded bg-rule animate-pulse" />
+                  <div className="grid grid-cols-1 gap-2">
+                    <div className="h-10 rounded-lg bg-rule animate-pulse" />
+                    <div className="h-10 rounded-lg bg-rule animate-pulse" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : quizQuestions.length === 0 ? (
+            <div className="py-12 text-center text-neutral-400 space-y-2">
+              <HelpCircle className="w-8 h-8 mx-auto text-neutral-300" />
+              <p className="text-xs">No quiz questions available. Add text sources to generate quiz.</p>
+            </div>
+          ) : (
+            <>
+              {/* Score Tracker */}
+              <div className="flex items-center justify-between p-3.5 bg-vessel rounded-xl border border-rule text-xs">
+                <span className="font-semibold text-ink">Progress ({selectedLanguage})</span>
+                <span className="font-mono text-xs text-accent font-bold">
+                  {Object.keys(userAnswers).length}/{quizQuestions.length} · {quizScore}/{quizQuestions.length}
+                </span>
+              </div>
+
+              {/* Question Cards */}
+              {quizQuestions.map((q, qIndex) => {
+                const selectedOpt = userAnswers[q.id];
+                const isAnswered = selectedOpt !== undefined;
+
+                return (
+                  <div
+                    key={q.id}
+                    className="p-4 rounded-xl bg-vessel/80 border border-rule space-y-3"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <h4 className="text-xs font-semibold text-ink leading-relaxed">
+                        {qIndex + 1}. {q.question}
+                      </h4>
+                      {q.sourceTitle && (
+                        <span className="text-[10px] text-neutral-400 font-mono shrink-0">
+                          {q.sourceTitle}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2">
+                      {q.options.map((opt, optIndex) => {
+                        let optStyle = "bg-surface border-rule text-ink hover:border-accent";
+
+                        if (isAnswered) {
+                          if (optIndex === q.correctIndex) {
+                            optStyle = "bg-emerald-50 border-emerald-500 text-emerald-800 font-semibold";
+                          } else if (optIndex === selectedOpt) {
+                            optStyle = "bg-red-50 border-red-500 text-red-800";
+                          } else {
+                            optStyle = "bg-surface border-rule text-neutral-400 opacity-50";
+                          }
+                        }
+
+                        return (
+                          <button
+                            key={optIndex}
+                            type="button"
+                            disabled={isAnswered}
+                            onClick={() => handleOptionSelect(q.id, optIndex)}
+                            className={`p-3 rounded-lg border text-left text-xs transition cursor-pointer flex items-center justify-between ${optStyle}`}
+                          >
+                            <span>{opt}</span>
+                            {isAnswered && optIndex === q.correctIndex && (
+                              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 ml-2" />
+                            )}
+                            {isAnswered && optIndex === selectedOpt && optIndex !== q.correctIndex && (
+                              <XCircle className="w-4 h-4 text-red-600 shrink-0 ml-2" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Explanation Feedback */}
+                    {isAnswered && (
+                      <div className="p-2.5 rounded-lg bg-surface border border-rule text-[11px] text-neutral-600 space-y-1">
+                        <span className="font-semibold text-accent block">Explanation:</span>
+                        <p>{q.explanation}</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </>
+          )}
+        </div>
+      )}
 
       <style jsx global>{`
         .perspective-1000 {
