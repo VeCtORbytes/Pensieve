@@ -279,11 +279,6 @@ export async function ensureVariant(
     }
   }
 
-  // An English source needs no English translation — mirror the original.
-  if (kind === "ENGLISH" && isEnglish(source.language)) {
-    return saveVariant(sourceId, kind, ENGLISH, segmentTexts(original));
-  }
-
   await db.sourceVariant.upsert({
     where: { sourceId_kind: { sourceId, kind } },
     create: {
@@ -326,8 +321,8 @@ function segmentTexts(variant: VariantText): string[] {
 }
 
 /**
- * Describes which renderings exist or can be offered for a source, so the UI can
- * show a language switcher without guessing.
+ * Describes which renderings exist or can be offered for a source. Always offers
+ * ORIGINAL and ENGLISH (Translate to EN) so Hinglish / foreign language sources can be translated.
  */
 export async function listVariants(sourceId: string): Promise<{
   language: string | null;
@@ -344,8 +339,7 @@ export async function listVariants(sourceId: string): Promise<{
   const byKind = new Map(rows.map((row) => [row.kind as VariantKind, row]));
 
   const sampleText = source.rawText || "";
-  const offered: VariantKind[] = ["ORIGINAL"];
-  if (!isEnglish(source.language)) offered.push("ENGLISH");
+  const offered: VariantKind[] = ["ORIGINAL", "ENGLISH"];
   if (canRomanize(source.language, sampleText)) offered.push("ROMANIZED");
 
   const variants: VariantSummary[] = offered.map((kind) => {

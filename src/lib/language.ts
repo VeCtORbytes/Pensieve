@@ -10,9 +10,7 @@ type ScriptRule = {
 };
 
 /**
- * Dominant-script detection. Cheap, offline, and enough to decide whether a
- * romanized ("Hinglish"-style) rendering is even meaningful, plus to constrain
- * the language-ID prompt to a sensible candidate set.
+ * Dominant-script detection. Includes "hi" in Latin script to detect Hinglish.
  */
 const SCRIPT_RULES: ScriptRule[] = [
   { script: "Devanagari", candidates: ["hi", "mr", "ne", "sa"], test: /[ऀ-ॿ]/g },
@@ -21,7 +19,7 @@ const SCRIPT_RULES: ScriptRule[] = [
   { script: "Gujarati", candidates: ["gu"], test: /[઀-૿]/g },
   { script: "Odia", candidates: ["or"], test: /[଀-୿]/g },
   { script: "Tamil", candidates: ["ta"], test: /[஀-௿]/g },
-  { script: "Telugu", candidates: ["te"], test: /[ఀ-౿]/g },
+  { script: "Telugu", candidates: ["te"], test: /[-౿]/g },
   { script: "Kannada", candidates: ["kn"], test: /[ಀ-೿]/g },
   { script: "Malayalam", candidates: ["ml"], test: /[ഀ-ൿ]/g },
   { script: "Sinhala", candidates: ["si"], test: /[඀-෿]/g },
@@ -33,7 +31,7 @@ const SCRIPT_RULES: ScriptRule[] = [
   { script: "Hangul", candidates: ["ko"], test: /[가-힯ᄀ-ᇿ]/g },
   { script: "Kana", candidates: ["ja"], test: /[぀-ゟ゠-ヿ]/g },
   { script: "Han", candidates: ["zh", "ja"], test: /[一-鿿]/g },
-  { script: "Latin", candidates: ["en", "es", "fr", "de", "pt", "it", "id", "vi", "tr"], test: /[A-Za-z]/g },
+  { script: "Latin", candidates: ["en", "hi", "es", "fr", "de", "pt", "it", "id", "vi", "tr"], test: /[A-Za-z]/g },
 ];
 
 export type ScriptInfo = {
@@ -59,7 +57,7 @@ export function detectScript(text: string): ScriptInfo {
   const script = best?.script ?? "Latin";
   return {
     script,
-    candidates: best?.candidates ?? [ENGLISH],
+    candidates: best?.candidates ?? [ENGLISH, "hi"],
     isLatin: script === "Latin",
   };
 }
@@ -67,17 +65,13 @@ export function detectScript(text: string): ScriptInfo {
 /**
  * Resolves the source language. A caller-supplied hint (e.g. the YouTube caption
  * track's language code) is authoritative; otherwise the script narrows the
- * options and one small model call picks between them. Falls back to the most
- * likely candidate for the script if that call fails.
+ * options and one small model call picks between them.
  */
 export async function detectLanguage(text: string, hint?: string | null): Promise<string> {
   const normalizedHint = normalizeLanguageCode(hint);
   if (normalizedHint) return normalizedHint;
 
   const { candidates, isLatin } = detectScript(text);
-
-  // Single-candidate scripts need no model call.
-  if (candidates.length === 1) return candidates[0];
 
   const sample = buildSample(text);
   if (!sample) return candidates[0];
@@ -93,11 +87,9 @@ export async function detectLanguage(text: string, hint?: string | null): Promis
           content:
             "Identify the dominant language of the sample. Reply as JSON: " +
             `{"language":"<ISO 639-1 code>"}. ` +
-            `Choose from: ${candidates.join(", ")}. ` +
+            `Choose from: ${candidates.join(", ")}, or 'hi' if Hinglish (Hindi written in Roman/Latin script). ` +
             (isLatin
-              ? "The text uses the Latin alphabet; it may be a non-English language " +
-                "romanized (e.g. Hindi typed as Hinglish) — in that case return the " +
-                "underlying language, not English."
+              ? "The text uses the Latin alphabet; it may be Hindi typed as Hinglish — in that case return 'hi', not 'en'."
               : ""),
         },
         { role: "user", content: sample },
@@ -136,7 +128,7 @@ export function isEnglish(code?: string | null): boolean {
   return normalizeLanguageCode(code) === ENGLISH;
 }
 
-/** English translation is only worth generating for non-English sources. */
+/** English translation is worth generating for any non-English or Hinglish source. */
 export function needsTranslation(code?: string | null): boolean {
   const normalized = normalizeLanguageCode(code);
   return normalized !== null && normalized !== ENGLISH;
@@ -155,18 +147,11 @@ export function scriptForLanguage(code?: string | null): string | null {
   return normalized ? LANGUAGE_SCRIPT.get(normalized) ?? null : null;
 }
 
-/** Conservative: an unrecognised language is assumed Latin, so we offer nothing. */
 export function isLatinScriptLanguage(code?: string | null): boolean {
   const script = scriptForLanguage(code);
   return script === null || script === "Latin";
 }
 
-/**
- * A romanized rendering only makes sense when the source is not already written
- * in the Latin alphabet — "Hinglish" for Devanagari Hindi, Romaji for Japanese,
- * and so on. Decided from the language code when it is known, falling back to
- * the text itself.
- */
 export function canRomanize(code: string | null | undefined, sampleText?: string): boolean {
   if (isEnglish(code)) return false;
 
