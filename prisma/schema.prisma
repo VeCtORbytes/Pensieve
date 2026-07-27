@@ -47,9 +47,22 @@ model Notebook {
   updatedAt  DateTime  @updatedAt
   sources    Source[]
   messages   Message[]
+  notes      Note[]
 
   @@index([userId])
   @@index([shareToken])
+}
+
+model Note {
+  id         String   @id @default(cuid())
+  notebookId String
+  notebook   Notebook @relation(fields: [notebookId], references: [id], onDelete: Cascade)
+  title      String   @default("Untitled Note")
+  content    String   @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([notebookId])
 }
 
 model Source {

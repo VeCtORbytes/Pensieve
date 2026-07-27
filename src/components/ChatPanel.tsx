@@ -15,6 +15,8 @@ import {
   PanelLeft,
   Layers,
   Download,
+  StickyNote,
+  Check,
 } from "lucide-react";
 import { useAuth, useUser, SignInButton } from "@clerk/nextjs";
 import { CitationPayload, RetrievalTracePayload } from "@/app/api/chat/route";
@@ -44,9 +46,17 @@ interface DBMessage {
   notebookId: string;
   role: string;
   content: string;
-  citations?: any;
-  trace?: any;
+  citations: any;
   createdAt: string;
+}
+
+interface ChatPanelProps {
+  notebookId: string;
+  sourceCount?: number;
+  onOpenSources?: () => void;
+  onOpenStudio?: () => void;
+  onToggleSources?: () => void;
+  onToggleStudio?: () => void;
 }
 
 export default function ChatPanel({
@@ -54,67 +64,92 @@ export default function ChatPanel({
   sourceCount,
   onOpenSources,
   onOpenStudio,
-}: {
-  notebookId: string;
-  sourceCount?: number;
-  onOpenSources?: () => void;
-  onOpenStudio?: () => void;
-}) {
+  onToggleSources,
+  onToggleStudio,
+}: ChatPanelProps) {
   const { isSignedIn } = useAuth();
   const { user } = useUser();
-  const [input, setInput] = useState("");
   const [messages, setMessages] = useState<MessageItem[]>([]);
+  const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
-  const [selectedViewerSource, setSelectedViewerSource] = useState<any | null>(null);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(true);
+
+  // Variant switcher for chat querying
+  const { variant, select, isExplicit } = useReadingVariant(notebookId);
+
+  // Citation viewer modal state
+  const [selectedViewerSource, setSelectedViewerSource] = useState<{
+    id: string;
+    title: string;
+    type: string;
+    url?: string | null;
+    blobUrl?: string | null;
+    rawText?: string | null;
+    createdAt: string;
+    locator?: any;
+  } | null>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { variant, isExplicit, select, reset } = useReadingVariant(notebookId);
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
-  // Fetch past messages on mount
   useEffect(() => {
-    async function fetchHistory() {
+    scrollToBottom();
+  }, [messages, isLoading]);
+
+  // Load chat history from backend database
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadChatHistory() {
       try {
-        setIsLoadingHistory(true);
+        setIsHistoryLoading(true);
         const res = await fetch(`/api/chat?notebookId=${notebookId}`);
-        if (res.ok) {
-          const data: DBMessage[] = await res.json();
-          const mapped: MessageItem[] = data.map((m) => ({
-            id: m.id,
-            role: m.role as "user" | "assistant",
-            content: m.content,
-            citations: m.citations ? (m.citations as CitationPayload[]) : null,
-            trace: m.trace ? (m.trace as RetrievalTracePayload) : null,
+        if (!res.ok) throw new Error("Failed to load conversation history");
+
+        const data: { messages: DBMessage[] } = await res.json();
+        if (isMounted) {
+          const formatted: MessageItem[] = (data.messages || []).map((msg) => ({
+            id: msg.id,
+            role: msg.role as "user" | "assistant",
+            content: msg.content,
+            citations: Array.isArray(msg.citations)
+              ? (msg.citations as CitationPayload[])
+              : null,
+            trace: null,
           }));
-          setMessages(mapped);
+          setMessages(formatted);
         }
       } catch (err) {
-        console.error("Failed to load chat history:", err);
+        console.error("Error loading chat history:", err);
       } finally {
-        setIsLoadingHistory(false);
+        if (isMounted) setIsHistoryLoading(false);
       }
     }
 
-    fetchHistory();
+    loadChatHistory();
+
+    return () => {
+      isMounted = false;
+    };
   }, [notebookId]);
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isLoading]);
+  const handleSend = async (textToSend?: string) => {
+    const text = textToSend || input;
+    if (!text.trim() || isLoading) return;
 
-  async function handleSend(customText?: string) {
-    const textToSend = customText || input;
-    if (!textToSend.trim() || isLoading) return;
-
-    const userMessage: MessageItem = {
-      id: Date.now().toString(),
+    const userMsgId = Date.now().toString();
+    const newUserMsg: MessageItem = {
+      id: userMsgId,
       role: "user",
-      content: textToSend.trim(),
+      content: text,
     };
 
-    const newMessages = [...messages, userMessage];
+    const newMessages = [...messages, newUserMsg];
     setMessages(newMessages);
-    if (!customText) setInput("");
+    if (!textToSend) setInput("");
     setIsLoading(true);
 
     const assistantMsgId = (Date.now() + 1).toString();
@@ -204,14 +239,17 @@ export default function ChatPanel({
         );
       }
     } catch (err: any) {
+      console.error("Chat error:", err);
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === assistantMsgId
             ? {
                 ...msg,
-                content: `Sorry, I encountered an error answering your prompt: ${
-                  err.message || "Unknown error"
-                }`,
+                content:
+                  msg.content ||
+                  `Sorry, an error occurred while processing your request: ${
+                    err.message || "Unknown error"
+                  }`,
               }
             : msg
         )
@@ -219,164 +257,83 @@ export default function ChatPanel({
     } finally {
       setIsLoading(false);
     }
-  }
+  };
 
-  function handleFormSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    handleSend();
-  }
-
-  function handleExportChatMarkdown() {
-    if (messages.length === 0) return;
-    let mdContent = `# Chat export\n\n`;
-    messages.forEach((m) => {
-      const roleName = m.role === "user" ? "User" : "Assistant";
-      mdContent += `### ${roleName}\n${m.content}\n\n`;
-      if (m.citations && m.citations.length > 0) {
-        mdContent += `**Citations:**\n`;
-        m.citations.forEach((c) => {
-          mdContent += `- [${c.number}] ${c.title} (${c.humanLocator || ""})\n`;
-        });
-        mdContent += `\n`;
-      }
-    });
-
-    const blob = new Blob([mdContent], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `Pensieve-Research-Thread-${notebookId}.md`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  }
-
-  const handleCitationClick = useCallback((citation: CitationPayload) => {
-    const isDocumentType = citation.type === "PDF" || citation.type === "YOUTUBE";
+  const handleCitationClick = useCallback((c: CitationPayload) => {
     setSelectedViewerSource({
-      id: citation.sourceId,
-      title: citation.title,
-      type: citation.type,
-      url: null,
-      blobUrl: null,
-      rawText: isDocumentType ? null : citation.text,
-      locator: citation.locator ?? null,
+      id: c.sourceId,
+      title: c.title,
+      type: c.type,
       createdAt: new Date().toISOString(),
+      locator: c.locator,
     });
   }, []);
 
+  const toggleSourcesHandler = onToggleSources || onOpenSources;
+  const toggleStudioHandler = onToggleStudio || onOpenStudio;
+
   return (
-    <div className="flex flex-col h-full bg-white text-ink relative overflow-hidden">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rule bg-white px-4 py-3 md:px-6 md:py-4">
-        <div className="flex min-w-0 items-center gap-2.5">
-          {onOpenSources && (
+    <div className="flex flex-1 flex-col h-full bg-white relative">
+      {/* Subheader / Toolbar for mobile & desktop */}
+      <div className="flex items-center justify-between px-4 py-2 border-b border-rule bg-vessel text-xs">
+        <div className="flex items-center gap-2">
+          {toggleSourcesHandler && (
             <button
               type="button"
-              onClick={onOpenSources}
-              aria-label={`Show sources${sourceCount ? ` (${sourceCount})` : ""}`}
-              className="flex shrink-0 items-center gap-1 rounded-xl border border-rule px-2.5 py-1.5 text-[11px] font-medium text-neutral-600 transition hover:bg-vessel md:hidden"
+              onClick={toggleSourcesHandler}
+              className="md:hidden p-1.5 text-neutral-600 hover:bg-neutral-200 rounded-lg transition"
+              title="Toggle Sources"
             >
-              <PanelLeft className="h-3.5 w-3.5" />
-              {sourceCount ?? ""}
+              <PanelLeft className="w-4 h-4" />
             </button>
           )}
-
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-white shadow-xs">
-            <Bot className="h-4 w-4" />
-          </div>
-          <div className="min-w-0">
-            <h2 className="truncate text-sm font-semibold text-ink">
-              Chat
-            </h2>
-            <p className="hidden text-[11px] text-neutral-400 sm:block">
-              Answers grounded only in your sources
-            </p>
-          </div>
+          <span className="font-semibold text-ink">Notebook Assistant</span>
         </div>
 
         <div className="flex items-center gap-2">
-          {onOpenStudio && (
-            <button
-              type="button"
-              onClick={onOpenStudio}
-              aria-label="Show studio"
-              className="flex shrink-0 items-center gap-1 rounded-xl border border-rule px-2.5 py-1.5 text-[11px] font-medium text-neutral-600 transition hover:bg-vessel lg:hidden"
-            >
-              <Layers className="h-3.5 w-3.5" />
-            </button>
-          )}
-
-          {/* Chat Export Control */}
-          {messages.length > 0 && (
-            <button
-              type="button"
-              onClick={handleExportChatMarkdown}
-              title="Export as Markdown"
-              className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold bg-vessel hover:bg-neutral-100 border border-rule text-accent rounded-xl transition cursor-pointer"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Export</span>
-            </button>
-          )}
-
-          <div className="flex min-w-0 items-center gap-1.5">
-            <Languages className="hidden h-3.5 w-3.5 shrink-0 text-neutral-400 sm:block" />
-            <div className="flex max-w-full overflow-x-auto rounded-full bg-vessel border border-rule p-0.5 text-[11px] font-medium">
-              <button
-                type="button"
-                onClick={reset}
-                title="Answer in whatever language the question is asked in"
-                aria-pressed={!isExplicit}
-                className={`shrink-0 rounded-full px-2.5 py-1 transition ${
-                  !isExplicit
-                    ? "bg-white text-ink font-semibold shadow-xs"
-                    : "text-neutral-500 hover:text-ink"
-                }`}
-              >
-                Auto
-              </button>
-              {languageOptions.map((option: LanguageOption) => {
-                const active = isExplicit && option.kind === variant;
+          {/* Query Language Switcher */}
+          <div className="flex items-center gap-1.5">
+            <Languages className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+            <div className="flex bg-white p-0.5 rounded-full border border-rule text-xs font-medium">
+              {languageOptions.map((opt) => {
+                const active = opt.kind === variant;
                 return (
                   <button
-                    key={option.kind}
+                    key={opt.kind}
                     type="button"
-                    onClick={() => select(option.kind)}
-                    title={`Read sources and get answers in ${option.label}`}
-                    aria-pressed={active}
-                    className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 transition ${
+                    onClick={() => select(opt.kind)}
+                    className={`px-2 py-0.5 rounded-full transition cursor-pointer text-[11px] ${
                       active
-                        ? "bg-white text-ink font-semibold shadow-xs"
+                        ? "bg-ink text-white font-semibold shadow-2xs"
                         : "text-neutral-500 hover:text-ink"
                     }`}
                   >
-                    {option.label}
+                    {opt.label}
                   </button>
                 );
               })}
             </div>
           </div>
+
+          {toggleStudioHandler && (
+            <button
+              type="button"
+              onClick={toggleStudioHandler}
+              className="md:hidden p-1.5 text-neutral-600 hover:bg-neutral-200 rounded-lg transition"
+              title="Toggle Studio"
+            >
+              <Layers className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Messages Scroll Area */}
-      <div className="flex-1 space-y-6 overflow-y-auto p-4 md:p-6">
-        {isLoadingHistory ? (
-          <div className="space-y-6" aria-label="Loading conversation history">
-            {[
-              { align: "left", width: "w-2/3" },
-              { align: "right", width: "w-1/2" },
-              { align: "left", width: "w-3/4" },
-            ].map((row, i) => (
-              <div
-                key={i}
-                className={`flex gap-2.5 md:gap-3 ${row.align === "right" ? "ml-auto flex-row-reverse max-w-3xl" : "max-w-3xl"}`}
-              >
-                <div className="h-7 w-7 shrink-0 rounded-full bg-rule animate-pulse" />
-                <div className={`h-16 ${row.width} rounded-xl bg-rule animate-pulse`} />
-              </div>
-            ))}
+      {/* Chat Messages */}
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+        {isHistoryLoading ? (
+          <div className="flex flex-col items-center justify-center h-full space-y-3 py-12 text-neutral-400">
+            <Loader2 className="w-6 h-6 animate-spin text-accent" />
+            <p className="text-xs font-medium">Loading conversation history...</p>
           </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full max-w-md mx-auto text-center space-y-4 py-12">
@@ -417,6 +374,7 @@ export default function ChatPanel({
               key={m.id}
               message={m}
               isLoading={isLoading}
+              notebookId={notebookId}
               userImageUrl={user?.imageUrl}
               onCitationClick={handleCitationClick}
             />
@@ -449,23 +407,26 @@ export default function ChatPanel({
             </SignInButton>
           </div>
         ) : (
-          <form onSubmit={handleFormSubmit} className="relative flex items-center">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSend();
+            }}
+            className="flex items-center gap-2 bg-vessel p-1.5 rounded-2xl border border-rule focus-within:border-accent focus-within:ring-1 focus-within:ring-accent transition shadow-2xs"
+          >
             <input
+              type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask a question about your sources..."
-              className="w-full pl-4 pr-12 py-3 text-xs bg-vessel border border-rule rounded-2xl outline-none focus:ring-2 focus:ring-accent focus:bg-white text-ink placeholder:text-neutral-400 transition"
+              className="flex-1 bg-transparent px-3 py-2 text-xs text-ink placeholder:text-neutral-400 outline-none"
             />
             <button
               type="submit"
-              disabled={isLoading || !input.trim()}
-              className="absolute right-2 p-2.5 bg-ink text-white rounded-xl hover:bg-accent disabled:opacity-40 transition cursor-pointer shadow-sm"
+              disabled={!input.trim() || isLoading}
+              className="p-2.5 rounded-xl bg-ink text-white hover:bg-accent disabled:opacity-40 transition cursor-pointer shrink-0"
             >
-              {isLoading ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <Send className="w-3.5 h-3.5" />
-              )}
+              <Send className="w-4 h-4" />
             </button>
           </form>
         )}
@@ -493,21 +454,44 @@ export default function ChatPanel({
 }
 
 /**
- * Memoized Chat Message Bubble supporting User Profile Image fallback.
+ * Memoized Chat Message Bubble supporting User Profile Image fallback and Pin to Note.
  */
 const ChatMessageBubble = memo(function ChatMessageBubble({
   message: m,
   isLoading,
+  notebookId,
   userImageUrl,
   onCitationClick,
 }: {
   message: MessageItem;
   isLoading: boolean;
+  notebookId: string;
   userImageUrl?: string | null;
   onCitationClick: (c: CitationPayload) => void;
 }) {
   const isUser = m.role === "user";
   const [imageError, setImageError] = useState(false);
+  const [pinned, setPinned] = useState(false);
+
+  async function handlePinToNote() {
+    try {
+      const res = await fetch("/api/notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          notebookId,
+          title: `Insight: ${m.content.slice(0, 30)}...`,
+          content: m.content,
+        }),
+      });
+      if (res.ok) {
+        setPinned(true);
+        setTimeout(() => setPinned(false), 2500);
+      }
+    } catch (err) {
+      console.error("Failed to pin to note:", err);
+    }
+  }
 
   return (
     <div
@@ -560,34 +544,49 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
           </div>
         )}
 
-        {/* Citation Chips under Assistant Answer */}
-        {!isUser && m.citations && m.citations.length > 0 && (
-          <div className="pt-1 space-y-1.5">
-            <div className="flex items-center gap-1 text-[11px] font-semibold text-neutral-500">
-              <BookOpen className="w-3 h-3 text-found" />
-              <span>Citations ({m.citations.length})</span>
-            </div>
+        {/* Pin to Note & Citation Chips */}
+        {!isUser && m.content && (
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+            <button
+              type="button"
+              onClick={handlePinToNote}
+              className="flex items-center gap-1 text-[11px] font-semibold text-neutral-500 hover:text-amber-600 transition cursor-pointer"
+            >
+              {pinned ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  <span className="text-emerald-600 font-bold">Pinned to Notes!</span>
+                </>
+              ) : (
+                <>
+                  <StickyNote className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Pin to Note</span>
+                </>
+              )}
+            </button>
 
-            <div className="flex flex-wrap gap-1.5">
-              {m.citations.map((c) => (
-                <button
-                  key={c.number}
-                  type="button"
-                  onClick={() => onCitationClick(c)}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium bg-white hover:bg-neutral-50 border border-rule rounded-lg shadow-xs text-ink hover:border-accent transition cursor-pointer"
-                >
-                  <span className="font-semibold text-found bg-found/10 px-1 rounded border border-found/20">
-                    [{c.number}]
-                  </span>
-                  <span className="max-w-[130px] truncate">{c.title}</span>
-                  {c.humanLocator && (
-                    <span className="text-[10px] font-mono text-neutral-400">
-                      · {c.humanLocator}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
+            {m.citations && m.citations.length > 0 && (
+              <div className="flex items-center gap-1 text-[11px] font-semibold text-neutral-500">
+                <BookOpen className="w-3 h-3 text-found" />
+                <span>Citations ({m.citations.length})</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {!isUser && m.citations && m.citations.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {m.citations.map((c, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => onCitationClick(c)}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-vessel hover:bg-neutral-100 border border-rule text-[11px] font-medium text-ink transition cursor-pointer shadow-2xs group"
+              >
+                <FileText className="w-3 h-3 text-accent group-hover:scale-110 transition" />
+                <span className="truncate max-w-[140px]">{c.title}</span>
+              </button>
+            ))}
           </div>
         )}
       </div>
@@ -595,58 +594,41 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
   );
 });
 
-/**
- * Renders citation markers as clickable chips and inline Markdown formatting.
- */
 function renderProseWithInlineCitations(
   content: string,
-  citations: CitationPayload[] | null | undefined,
-  onCitationClick: (c: CitationPayload) => void
+  citations?: CitationPayload[] | null,
+  onCitationClick?: (c: CitationPayload) => void
 ) {
-  const citationMap = new Map<number, CitationPayload>();
-  (citations || []).forEach((c) => citationMap.set(c.number, c));
-
-  const regex = /\[(\d+)\]|\*\*(.+?)\*\*|\*(.+?)\*/g;
-  const parts: React.ReactNode[] = [];
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-  let key = 0;
-
-  while ((match = regex.exec(content)) !== null) {
-    const beforeText = content.substring(lastIndex, match.index);
-    if (beforeText) parts.push(beforeText);
-
-    const [, citationNum, bold, italic] = match;
-
-    if (citationNum !== undefined) {
-      const num = parseInt(citationNum, 10);
-      const cit = citationMap.get(num);
-      if (cit) {
-        parts.push(
-          <button
-            key={key++}
-            type="button"
-            onClick={() => onCitationClick(cit)}
-            title={`${cit.title} (${cit.humanLocator || ""})`}
-            className="inline-flex items-center justify-center mx-0.5 px-1.5 py-0.2 text-[10px] font-bold text-found bg-found/10 hover:bg-found/20 rounded border border-found/30 transition cursor-pointer"
-          >
-            [{num}]
-          </button>
-        );
-      } else {
-        parts.push(match[0]);
-      }
-    } else if (bold !== undefined) {
-      parts.push(<strong key={key++} className="font-semibold">{bold}</strong>);
-    } else if (italic !== undefined) {
-      parts.push(<em key={key++}>{italic}</em>);
-    }
-
-    lastIndex = regex.lastIndex;
+  if (!citations || citations.length === 0) {
+    return <div className="whitespace-pre-wrap">{content}</div>;
   }
 
-  const remainingText = content.substring(lastIndex);
-  if (remainingText) parts.push(remainingText);
+  const parts = content.split(/(\[\d+\])/g);
 
-  return <div className="whitespace-pre-wrap leading-relaxed">{parts}</div>;
+  return (
+    <div className="whitespace-pre-wrap">
+      {parts.map((part, index) => {
+        const match = part.match(/^\[(\d+)\]$/);
+        if (match) {
+          const citationNum = parseInt(match[1], 10);
+          const citation = citations[citationNum - 1];
+
+          if (citation) {
+            return (
+              <button
+                key={index}
+                type="button"
+                onClick={() => onCitationClick && onCitationClick(citation)}
+                title={`View Source: ${citation.title}`}
+                className="inline-flex items-center justify-center mx-0.5 px-1.5 py-0.5 rounded bg-emerald-100 hover:bg-emerald-200 text-found font-mono text-[10px] font-semibold transition cursor-pointer border border-emerald-300"
+              >
+                [{citationNum}]
+              </button>
+            );
+          }
+        }
+        return <span key={index}>{part}</span>;
+      })}
+    </div>
+  );
 }

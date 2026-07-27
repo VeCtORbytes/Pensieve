@@ -1,21 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { Volume2, Layers, Loader2, GitFork, FileText } from "lucide-react";
+import { Volume2, Layers, Loader2, GitFork, FileText, StickyNote } from "lucide-react";
 import AudioPlayer from "@/components/AudioPlayer";
 import StudyToolsModal from "@/components/StudyToolsModal";
 import MindMapModal from "@/components/MindMapModal";
 import BriefingModal from "@/components/BriefingModal";
+import NotesModal from "@/components/NotesModal";
 
 /**
- * Persistent home for generated notebook outputs (Audio Overview, Study Tools,
- * AI Mind Map & Knowledge Graph, Executive Briefings & Study Guides).
+ * Persistent home for generated notebook outputs (Audio Overview, Notes & Scratchpad,
+ * Study Tools, AI Mind Map & Knowledge Graph, Executive Briefings & Study Guides).
  */
 export default function StudioPanel({ notebookId }: { notebookId: string }) {
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [audioData, setAudioData] = useState<{ audioUrl: string; scriptText: string } | null>(null);
   const [studyToolsOpen, setStudyToolsOpen] = useState(false);
   const [mindMapOpen, setMindMapOpen] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
 
   // Executive Briefing & Study Guide states
   const [loadingFormat, setLoadingFormat] = useState<"briefing" | "study-guide" | null>(null);
@@ -78,6 +80,26 @@ export default function StudioPanel({ notebookId }: { notebookId: string }) {
       </div>
 
       <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3">
+        {/* Notes & Scratchpad entry */}
+        <div className="rounded-xl bg-surface border border-rule shadow-xs overflow-hidden">
+          <div className="p-4 flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <StickyNote className="h-4 w-4 shrink-0 text-amber-500" />
+              <div className="min-w-0">
+                <p className="truncate text-xs font-semibold text-ink">Notes & Scratchpad</p>
+                <p className="text-[11px] text-neutral-400">Organize & export research</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setNotesOpen(true)}
+              className="shrink-0 rounded-lg bg-ink px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-accent cursor-pointer"
+            >
+              Open Notes
+            </button>
+          </div>
+        </div>
+
         {/* Audio Overview entry */}
         <div className="rounded-xl bg-surface border border-rule shadow-xs overflow-hidden">
           {audioData ? (
@@ -89,7 +111,7 @@ export default function StudioPanel({ notebookId }: { notebookId: string }) {
               />
             </div>
           ) : (
-            <div className="p-[#14] p-4 flex items-center justify-between gap-3">
+            <div className="p-4 flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-2.5">
                 <Volume2 className="h-4 w-4 shrink-0 text-secondary" />
                 <div className="min-w-0">
@@ -206,6 +228,14 @@ export default function StudioPanel({ notebookId }: { notebookId: string }) {
           </div>
         </div>
       </div>
+
+      {/* Notes Modal */}
+      {notesOpen && (
+        <NotesModal
+          notebookId={notebookId}
+          onClose={() => setNotesOpen(false)}
+        />
+      )}
 
       {/* Briefing Modal */}
       {briefingData && (
