@@ -60,6 +60,7 @@ export default function SourceViewerModal({
   const markRef = useRef<HTMLElement>(null);
   const [copied, setCopied] = useState(false);
   const [loadingPdf, setLoadingPdf] = useState(false);
+  const [isIframeLoading, setIsIframeLoading] = useState(true);
 
   const { variant, select } = useReadingVariant(notebookId);
 
@@ -98,6 +99,10 @@ export default function SourceViewerModal({
 
   const effectiveUrl = fetchedSource?.url ?? source.url;
   const effectiveBlobUrl = fetchedSource?.blobUrl ?? source.blobUrl;
+
+  useEffect(() => {
+    setIsIframeLoading(true);
+  }, [effectiveUrl, locator?.startSec]);
 
   useEffect(() => {
     let isMounted = true;
@@ -403,11 +408,28 @@ export default function SourceViewerModal({
           {/* 2. YOUTUBE VIDEO PLAYER */}
           {source.type === "YOUTUBE" && activeViewTab === "viewer" && (
             <div className="flex-1 grid grid-cols-1 md:grid-cols-3 overflow-hidden">
-              <div className="md:col-span-2 bg-black flex items-center justify-center relative">
+              <div className="md:col-span-2 bg-black flex items-center justify-center relative overflow-hidden">
+                {isIframeLoading && (
+                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-neutral-900 text-white space-y-3 p-6 text-center">
+                    <Loader2 className="w-8 h-8 animate-spin text-[#3B4CC0]" />
+                    <div className="space-y-1">
+                      <p className="text-xs font-semibold text-white">
+                        Loading YouTube Video Player...
+                      </p>
+                      {locator?.startSec !== undefined && (
+                        <p className="text-[11px] text-neutral-400 font-mono">
+                          Jumping to citation timestamp at {formatSecondsToTimestamp(locator.startSec)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {effectiveUrl ? (
                   <iframe
                     src={getYouTubeEmbedUrl(effectiveUrl, locator?.startSec)}
-                    className="w-full h-full min-h-[300px]"
+                    onLoad={() => setIsIframeLoading(false)}
+                    className="w-full h-full min-h-[300px] border-0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
                   />
@@ -493,6 +515,16 @@ function TypeBadge({ type }: { type: string }) {
   );
 }
 
+function formatSecondsToTimestamp(sec: number): string {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = Math.floor(sec % 60);
+  if (h > 0) {
+    return `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  }
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
 function getYouTubeEmbedUrl(urlStr: string, startSec?: number): string {
   try {
     let videoId = "";
@@ -500,6 +532,10 @@ function getYouTubeEmbedUrl(urlStr: string, startSec?: number): string {
       videoId = urlStr.split("v=")[1].split("&")[0];
     } else if (urlStr.includes("youtu.be/")) {
       videoId = urlStr.split("youtu.be/")[1].split("?")[0];
+    } else if (urlStr.includes("youtube.com/live/")) {
+      videoId = urlStr.split("youtube.com/live/")[1].split("?")[0];
+    } else if (urlStr.includes("youtube.com/shorts/")) {
+      videoId = urlStr.split("youtube.com/shorts/")[1].split("?")[0];
     }
 
     return `https://www.youtube.com/embed/${videoId}?autoplay=1${startSec ? `&start=${startSec}` : ""}`;
