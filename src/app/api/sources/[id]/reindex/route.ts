@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { ingestSource } from "@/lib/ingest";
+import { loadOwnedSource } from "@/lib/authz";
 
 export const maxDuration = 60;
 
@@ -15,10 +17,9 @@ export async function POST(
       return NextResponse.json({ error: "source id parameter is required" }, { status: 400 });
     }
 
-    const source = await db.source.findUnique({ where: { id } });
-    if (!source) {
-      return NextResponse.json({ error: "Source not found" }, { status: 404 });
-    }
+    const { userId } = await auth();
+    const { data: source, error } = await loadOwnedSource(id, userId);
+    if (error) return error;
 
     // 1. Reset status to QUEUED
     await db.source.update({

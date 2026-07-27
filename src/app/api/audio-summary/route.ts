@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
+import { loadOwnedNotebook } from "@/lib/authz";
 import OpenAI from "openai";
 
 export const maxDuration = 60;
@@ -15,6 +17,10 @@ export async function POST(req: NextRequest) {
     if (!notebookId) {
       return NextResponse.json({ error: "notebookId parameter is required" }, { status: 400 });
     }
+
+    const { userId } = await auth();
+    const { error } = await loadOwnedNotebook(notebookId, userId);
+    if (error) return error;
 
     // 1. Fetch READY sources for the notebook
     const sources = await db.source.findMany({

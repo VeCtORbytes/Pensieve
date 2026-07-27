@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { ingestSource, deleteSourceVectors } from "@/lib/ingest";
 import { SourceType } from "@prisma/client";
+import { loadOwnedNotebook, loadOwnedSource } from "@/lib/authz";
 
 // Ingestion now also translates non-English sources segment by segment.
 export const maxDuration = 300;
@@ -13,6 +15,10 @@ export async function GET(req: NextRequest) {
   if (!notebookId) {
     return NextResponse.json({ error: "notebookId parameter is required" }, { status: 400 });
   }
+
+  const { userId } = await auth();
+  const { error } = await loadOwnedNotebook(notebookId, userId);
+  if (error) return error;
 
   const sources = await db.source.findMany({
     where: { notebookId },
@@ -33,6 +39,10 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    const { userId } = await auth();
+    const { error } = await loadOwnedNotebook(notebookId, userId);
+    if (error) return error;
 
     const sourceType = (type as string).toUpperCase() as SourceType;
     const sourceContent = content || url || "";
@@ -86,6 +96,10 @@ export async function DELETE(req: NextRequest) {
     if (!id) {
       return NextResponse.json({ error: "source id parameter is required" }, { status: 400 });
     }
+
+    const { userId } = await auth();
+    const { error } = await loadOwnedSource(id, userId);
+    if (error) return error;
 
     await deleteSourceVectors(id);
     await db.source.delete({ where: { id } });

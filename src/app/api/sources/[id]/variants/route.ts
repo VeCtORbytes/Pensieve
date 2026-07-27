@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { isVariantKind } from "@/lib/locator";
 import { ensureVariant, listVariants } from "@/lib/variants";
+import { loadOwnedSource } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -12,6 +14,11 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+
+    const { userId } = await auth();
+    const { error } = await loadOwnedSource(id, userId);
+    if (error) return error;
+
     return NextResponse.json(await listVariants(id));
   } catch (err: any) {
     const notFound = err?.message === "Source not found";
@@ -41,6 +48,10 @@ export async function POST(
         { status: 400 }
       );
     }
+
+    const { userId } = await auth();
+    const { error } = await loadOwnedSource(id, userId);
+    if (error) return error;
 
     const variant = await ensureVariant(id, kind);
 

@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { canRomanize, isEnglish, languageName } from "@/lib/language";
 import { VariantKind } from "@/lib/locator";
 import { variantLabel } from "@/lib/variants";
+import { loadOwnedNotebook } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +19,10 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+
+    const { userId } = await auth();
+    const { error } = await loadOwnedNotebook(id, userId);
+    if (error) return error;
 
     const sources = await db.source.findMany({
       where: { notebookId: id, status: "READY" },

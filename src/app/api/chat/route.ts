@@ -6,6 +6,7 @@ import { generateEmbeddings } from "@/lib/embeddings";
 import { Locator, VariantKind } from "@/lib/locator";
 import { locatorLabel } from "@/lib/formatLocator";
 import { selectForContext } from "@/lib/retrieval";
+import { loadOwnedNotebook } from "@/lib/authz";
 import { openai } from "@ai-sdk/openai";
 import { streamText } from "ai";
 
@@ -54,6 +55,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "notebookId parameter is required" }, { status: 400 });
   }
 
+  const { error } = await loadOwnedNotebook(notebookId, userId);
+  if (error) return error;
+
   const messages = await db.message.findMany({
     where: { notebookId },
     orderBy: { createdAt: "asc" },
@@ -79,6 +83,9 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    const { error: notebookError } = await loadOwnedNotebook(notebookId, userId);
+    if (notebookError) return notebookError;
 
     const lastMessage = messages[messages.length - 1];
     const userPrompt = typeof lastMessage.content === "string" ? lastMessage.content : "";
