@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
-import { ArrowLeft, Trash2, Search, Waypoints } from "lucide-react";
+import { ArrowLeft, Trash2, Search, Waypoints, Share2 } from "lucide-react";
 import { renameNotebook, deleteNotebook } from "@/app/actions/notebooks";
 import CommandPalette from "@/components/CommandPalette";
 import SourceViewerModal from "@/components/SourceViewerModal";
 import AuthControls from "@/components/AuthControls";
 import IngestionPipelineVisualizer from "@/components/IngestionPipelineVisualizer";
+import ShareNotebookModal from "@/components/ShareNotebookModal";
 import PensieveLogo from "@/components/PensieveLogo";
 
 export default function NotebookHeader({
@@ -26,6 +27,9 @@ export default function NotebookHeader({
 
   // Pipeline Visualizer state
   const [isVisualizerOpen, setIsVisualizerOpen] = useState(false);
+
+  // Share Modal state
+  const [isShareOpen, setIsShareOpen] = useState(false);
 
   // Capture-phase so this fires even when focus is inside an input/textarea.
   useEffect(() => {
@@ -104,6 +108,17 @@ export default function NotebookHeader({
           )}
         </div>
 
+        {/* Share Button */}
+        <button
+          type="button"
+          onClick={() => setIsShareOpen(true)}
+          aria-label="Share notebook link"
+          className="flex shrink-0 cursor-pointer items-center gap-2 rounded-xl border border-rule bg-white hover:bg-vessel px-3.5 py-2 text-xs font-semibold text-ink shadow-xs transition hover:border-accent"
+        >
+          <Share2 className="h-4 w-4 text-accent" />
+          <span className="hidden md:inline">Share</span>
+        </button>
+
         {/* Pipeline Visualizer Trigger */}
         <button
           type="button"
@@ -140,6 +155,11 @@ export default function NotebookHeader({
         {/* Auth Controls */}
         <AuthControls />
       </header>
+
+      {/* Share Notebook Modal */}
+      {isShareOpen && (
+        <ShareNotebookModal notebookId={id} onClose={() => setIsShareOpen(false)} />
+      )}
 
       {/* Pipeline Visualizer Modal */}
       {isVisualizerOpen && (
