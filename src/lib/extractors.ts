@@ -5,6 +5,20 @@ import { Extraction, Locator, Segment } from "./locator";
 import { detectLanguage, normalizeLanguageCode } from "./language";
 
 /**
+ * Robustly parses YouTube Video ID from any YouTube URL (watch, shorts, embed, short link).
+ */
+export function parseYoutubeVideoId(urlOrId: string): string | null {
+  if (!urlOrId) return null;
+  const trimmed = urlOrId.trim();
+  if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) return trimmed;
+
+  const match = trimmed.match(
+    /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([a-zA-Z0-9_-]{11})/
+  );
+  return match ? match[1] : null;
+}
+
+/**
  * Combines structured text parts into rawText while setting exact charStart/charEnd
  * offsets for each segment.
  */
@@ -133,16 +147,23 @@ export async function extractWebsite(url: string): Promise<Extraction> {
  * for rich semantic vector embedding.
  */
 export async function extractYoutube(url: string): Promise<Extraction> {
+  const videoId = parseYoutubeVideoId(url);
+  if (!videoId) {
+    throw new Error(
+      "Invalid YouTube URL format. Please provide a valid YouTube video or Shorts link (e.g. https://www.youtube.com/watch?v=...)."
+    );
+  }
+
   let transcript: any[] = [];
 
   try {
-    transcript = await YoutubeTranscript.fetchTranscript(url);
+    transcript = await YoutubeTranscript.fetchTranscript(videoId);
   } catch (primaryErr: any) {
     try {
-      transcript = await YoutubeTranscript.fetchTranscript(url, { lang: "en" });
+      transcript = await YoutubeTranscript.fetchTranscript(videoId, { lang: "en" });
     } catch {
       throw new Error(
-        primaryErr?.message || "Could not retrieve transcript for YouTube video."
+        "Could not retrieve captions/transcript for this YouTube video. Please ensure the video is public and has closed captions enabled."
       );
     }
   }
