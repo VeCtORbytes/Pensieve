@@ -3,6 +3,14 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+function getNoteModel() {
+  const model = (prisma as any).note || (new PrismaClient() as any).note;
+  if (!model) {
+    throw new Error("Prisma Note model is not initialized.");
+  }
+  return model;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -12,7 +20,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "notebookId is required" }, { status: 400 });
     }
 
-    const notes = await prisma.note.findMany({
+    const noteModel = getNoteModel();
+    const notes = await noteModel.findMany({
       where: { notebookId },
       orderBy: { updatedAt: "desc" },
     });
@@ -31,7 +40,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "notebookId is required" }, { status: 400 });
     }
 
-    const note = await prisma.note.create({
+    const noteModel = getNoteModel();
+    const note = await noteModel.create({
       data: {
         notebookId,
         title: title.trim() || "Untitled Note",

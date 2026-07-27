@@ -3,6 +3,14 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+function getNoteModel() {
+  const model = (prisma as any).note || (new PrismaClient() as any).note;
+  if (!model) {
+    throw new Error("Prisma Note model is not initialized.");
+  }
+  return model;
+}
+
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -11,7 +19,8 @@ export async function PUT(
     const { id } = await params;
     const { title, content } = await req.json();
 
-    const note = await prisma.note.update({
+    const noteModel = getNoteModel();
+    const note = await noteModel.update({
       where: { id },
       data: {
         ...(title !== undefined && { title: title.trim() || "Untitled Note" }),
@@ -32,7 +41,8 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    await prisma.note.delete({ where: { id } });
+    const noteModel = getNoteModel();
+    await noteModel.delete({ where: { id } });
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
