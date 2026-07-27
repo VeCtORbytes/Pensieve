@@ -11,6 +11,7 @@ import IngestionPipelineVisualizer from "@/components/IngestionPipelineVisualize
 import ShareNotebookModal from "@/components/ShareNotebookModal";
 import PensieveLogo from "@/components/PensieveLogo";
 import SocialLinks from "@/components/SocialLinks";
+import CartoonGuideTour from "@/components/CartoonGuideTour";
 
 export default function NotebookHeader({
   id,
@@ -159,6 +160,9 @@ export default function NotebookHeader({
         {/* Auth Controls */}
         <AuthControls />
       </header>
+
+      {/* Cartoon Speech Bubble Tour for Notebook Workspace */}
+      <CartoonGuideTour page="notebook" />
 
       {/* Share Notebook Modal */}
       {isShareOpen && (

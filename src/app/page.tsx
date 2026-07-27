@@ -7,6 +7,7 @@ import AuthControls from "@/components/AuthControls";
 import DeleteNotebookButton from "@/components/DeleteNotebookButton";
 import PensieveLogo from "@/components/PensieveLogo";
 import SocialLinks from "@/components/SocialLinks";
+import CartoonGuideTour from "@/components/CartoonGuideTour";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,7 @@ export default async function HomePage() {
   const totalSources = notebooks.reduce((sum, n) => sum + n._count.sources, 0);
 
   return (
-    <main className="min-h-screen bg-vessel text-ink px-6 py-12 flex flex-col justify-between">
+    <main className="min-h-screen bg-vessel text-ink px-6 py-12 flex flex-col justify-between relative">
       <div className="mx-auto max-w-5xl space-y-10 w-full">
         {/* Navigation Bar with Auth & Social Links */}
         <div className="flex items-center justify-between pb-5 border-b border-rule">
@@ -71,7 +72,7 @@ export default async function HomePage() {
           </div>
 
           {/* New Notebook Form */}
-          <form action={createNotebook} className="bg-surface p-5 rounded-2xl border border-rule shadow-md space-y-3.5 shrink-0 sm:w-80">
+          <form action={createNotebook} className="bg-surface p-5 rounded-2xl border border-rule shadow-md space-y-3.5 shrink-0 sm:w-80 relative">
             <div className="text-xs font-semibold text-ink">
               New notebook
             </div>
@@ -149,6 +150,9 @@ export default async function HomePage() {
           <span>Pensieve AI Studio © 2026</span>
         </div>
       </footer>
+
+      {/* Cartoon Speech Bubble Tour for Homepage */}
+      <CartoonGuideTour page="home" />
     </main>
   );
 }

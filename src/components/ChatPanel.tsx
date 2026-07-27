@@ -20,7 +20,6 @@ import {
 import { useAuth, useUser, SignInButton } from "@clerk/nextjs";
 import { CitationPayload, RetrievalTracePayload } from "@/app/api/chat/route";
 import SourceViewerModal from "@/components/SourceViewerModal";
-import AnimatedGuideDialog from "@/components/AnimatedGuideDialog";
 import { VariantKind } from "@/lib/locator";
 import { useReadingVariant } from "@/hooks/useReadingVariant";
 
@@ -327,9 +326,6 @@ export default function ChatPanel({
         </div>
       </div>
 
-      {/* Animated Interactive Onboarding Guide Dialogue Box */}
-      <AnimatedGuideDialog />
-
       {/* Chat Messages */}
       <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
         {isHistoryLoading ? (
@@ -530,7 +526,7 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
           <div
             className={`overflow-hidden break-words rounded-xl p-3.5 text-xs leading-relaxed md:p-4 shadow-xs ${
               isUser
-                ? "rounded-tr-none bg-ink text-white font-medium"
+                ? "rounded-tr-none bg-ink text-[#fff] font-medium"
                 : "rounded-tl-none border border-rule bg-vessel text-ink"
             }`}
           >
