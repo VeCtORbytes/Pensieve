@@ -6,13 +6,14 @@ import {
   User,
   Send,
   Loader2,
-  Sparkles,
+  ArrowRight,
   BookOpen,
   X,
   FileText,
   MessageSquare,
   Languages,
   PanelLeft,
+  Layers,
   Download,
 } from "lucide-react";
 import { useAuth, SignInButton } from "@clerk/nextjs";
@@ -52,10 +53,12 @@ export default function ChatPanel({
   notebookId,
   sourceCount,
   onOpenSources,
+  onOpenStudio,
 }: {
   notebookId: string;
   sourceCount?: number;
   onOpenSources?: () => void;
+  onOpenStudio?: () => void;
 }) {
   const { isSignedIn } = useAuth();
   const [input, setInput] = useState("");
@@ -141,7 +144,7 @@ export default function ChatPanel({
 
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.error || "Failed to reach Pensieve API");
+        throw new Error(errorData.error || "Failed to reach the server");
       }
 
       const reader = res.body?.getReader();
@@ -167,8 +170,7 @@ export default function ChatPanel({
           if (!trimmed) continue;
 
           // Data stream protocol: "2:" carries out-of-band JSON parts (trace,
-          // citations); "0:" carries a plain-text token. The server never sends
-          // "CITATIONS:"/"TRACE:" prefixes — those belonged to an older protocol.
+          // citations); "0:" carries a plain-text token.
           if (trimmed.startsWith("2:")) {
             try {
               const parts = JSON.parse(trimmed.substring(2));
@@ -227,9 +229,9 @@ export default function ChatPanel({
 
   function handleExportChatMarkdown() {
     if (messages.length === 0) return;
-    let mdContent = `# Pensieve Chat Research Thread\n\n`;
+    let mdContent = `# Chat export\n\n`;
     messages.forEach((m) => {
-      const roleName = m.role === "user" ? "User" : "Pensieve Assistant";
+      const roleName = m.role === "user" ? "User" : "Assistant";
       mdContent += `### ${roleName}\n${m.content}\n\n`;
       if (m.citations && m.citations.length > 0) {
         mdContent += `**Citations:**\n`;
@@ -270,28 +272,28 @@ export default function ChatPanel({
   }, []);
 
   return (
-    <div className="flex flex-col h-full bg-white text-[#141A22] relative overflow-hidden">
+    <div className="flex flex-col h-full bg-white text-ink relative overflow-hidden">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E2E7EA] bg-white px-4 py-3 md:px-6 md:py-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rule bg-white px-4 py-3 md:px-6 md:py-4">
         <div className="flex min-w-0 items-center gap-2.5">
           {onOpenSources && (
             <button
               type="button"
               onClick={onOpenSources}
               aria-label={`Show sources${sourceCount ? ` (${sourceCount})` : ""}`}
-              className="flex shrink-0 items-center gap-1 rounded-xl border border-[#E2E7EA] px-2.5 py-1.5 text-[11px] font-medium text-neutral-600 transition hover:bg-[#F5F7F8] md:hidden"
+              className="flex shrink-0 items-center gap-1 rounded-xl border border-rule px-2.5 py-1.5 text-[11px] font-medium text-neutral-600 transition hover:bg-vessel md:hidden"
             >
               <PanelLeft className="h-3.5 w-3.5" />
               {sourceCount ?? ""}
             </button>
           )}
 
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#3B4CC0] text-white shadow-xs">
-            <Sparkles className="h-4 w-4" />
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-white shadow-xs">
+            <Bot className="h-4 w-4" />
           </div>
           <div className="min-w-0">
-            <h2 className="truncate text-sm font-semibold text-[#141A22]">
-              Pensieve AI Assistant
+            <h2 className="truncate text-sm font-semibold text-ink">
+              Chat
             </h2>
             <p className="hidden text-[11px] text-neutral-400 sm:block">
               Answers grounded only in your sources
@@ -300,31 +302,42 @@ export default function ChatPanel({
         </div>
 
         <div className="flex items-center gap-2">
+          {onOpenStudio && (
+            <button
+              type="button"
+              onClick={onOpenStudio}
+              aria-label="Show studio"
+              className="flex shrink-0 items-center gap-1 rounded-xl border border-rule px-2.5 py-1.5 text-[11px] font-medium text-neutral-600 transition hover:bg-vessel lg:hidden"
+            >
+              <Layers className="h-3.5 w-3.5" />
+            </button>
+          )}
+
           {/* Chat Export Control */}
           {messages.length > 0 && (
             <button
               type="button"
               onClick={handleExportChatMarkdown}
-              title="Export Research Thread as Markdown"
-              className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold bg-[#F5F7F8] hover:bg-neutral-100 border border-[#E2E7EA] text-[#3B4CC0] rounded-xl transition cursor-pointer"
+              title="Export as Markdown"
+              className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold bg-vessel hover:bg-neutral-100 border border-rule text-accent rounded-xl transition cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Export Thread</span>
+              <span className="hidden sm:inline">Export</span>
             </button>
           )}
 
           <div className="flex min-w-0 items-center gap-1.5">
             <Languages className="hidden h-3.5 w-3.5 shrink-0 text-neutral-400 sm:block" />
-            <div className="flex max-w-full overflow-x-auto rounded-xl bg-[#F5F7F8] border border-[#E2E7EA] p-0.5 text-[11px] font-medium">
+            <div className="flex max-w-full overflow-x-auto rounded-full bg-vessel border border-rule p-0.5 text-[11px] font-medium">
               <button
                 type="button"
                 onClick={reset}
                 title="Answer in whatever language the question is asked in"
                 aria-pressed={!isExplicit}
-                className={`shrink-0 rounded-lg px-2.5 py-1 transition ${
+                className={`shrink-0 rounded-full px-2.5 py-1 transition ${
                   !isExplicit
-                    ? "bg-white text-[#141A22] font-semibold shadow-xs"
-                    : "text-neutral-500 hover:text-[#141A22]"
+                    ? "bg-white text-ink font-semibold shadow-xs"
+                    : "text-neutral-500 hover:text-ink"
                 }`}
               >
                 Auto
@@ -338,10 +351,10 @@ export default function ChatPanel({
                     onClick={() => select(option.kind)}
                     title={`Read sources and get answers in ${option.label}`}
                     aria-pressed={active}
-                    className={`shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1 transition ${
+                    className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 transition ${
                       active
-                        ? "bg-white text-[#141A22] font-semibold shadow-xs"
-                        : "text-neutral-500 hover:text-[#141A22]"
+                        ? "bg-white text-ink font-semibold shadow-xs"
+                        : "text-neutral-500 hover:text-ink"
                     }`}
                   >
                     {option.label}
@@ -356,17 +369,28 @@ export default function ChatPanel({
       {/* Messages Scroll Area */}
       <div className="flex-1 space-y-6 overflow-y-auto p-4 md:p-6">
         {isLoadingHistory ? (
-          <div className="flex items-center justify-center h-full text-neutral-400 gap-2">
-            <Loader2 className="w-5 h-5 animate-spin" />
-            <span className="text-xs font-medium">Loading conversation history...</span>
+          <div className="space-y-6" aria-label="Loading conversation history">
+            {[
+              { align: "left", width: "w-2/3" },
+              { align: "right", width: "w-1/2" },
+              { align: "left", width: "w-3/4" },
+            ].map((row, i) => (
+              <div
+                key={i}
+                className={`flex gap-2.5 md:gap-3 ${row.align === "right" ? "ml-auto flex-row-reverse max-w-3xl" : "max-w-3xl"}`}
+              >
+                <div className="h-7 w-7 shrink-0 rounded-full bg-rule animate-pulse" />
+                <div className={`h-16 ${row.width} rounded-xl bg-rule animate-pulse`} />
+              </div>
+            ))}
           </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full max-w-md mx-auto text-center space-y-4 py-12">
-            <div className="w-12 h-12 rounded-2xl bg-[#F5F7F8] border border-[#E2E7EA] flex items-center justify-center text-neutral-400">
-              <MessageSquare className="w-6 h-6 text-[#3B4CC0]" />
+            <div className="w-12 h-12 rounded-2xl bg-vessel border border-rule flex items-center justify-center text-neutral-400">
+              <MessageSquare className="w-6 h-6 text-accent" />
             </div>
             <div>
-              <h3 className="text-base font-semibold text-[#141A22]">Start a Conversation</h3>
+              <h3 className="text-base font-semibold text-ink">Start a Conversation</h3>
               <p className="text-xs text-neutral-400 mt-1">
                 Ask questions about your uploaded documents, websites, PDFs, or YouTube videos.
               </p>
@@ -385,10 +409,10 @@ export default function ChatPanel({
                   key={i}
                   type="button"
                   onClick={() => handleSend(promptText)}
-                  className="w-full text-left p-3 text-xs text-[#141A22] bg-[#F5F7F8] hover:bg-neutral-100 rounded-xl border border-[#E2E7EA] transition flex items-center justify-between group cursor-pointer"
+                  className="w-full text-left p-3 text-xs text-ink bg-vessel hover:bg-neutral-100 rounded-xl border border-rule transition flex items-center justify-between group cursor-pointer"
                 >
                   <span>{promptText}</span>
-                  <Sparkles className="w-3.5 h-3.5 text-neutral-400 group-hover:text-[#3B4CC0] transition" />
+                  <ArrowRight className="w-3.5 h-3.5 text-neutral-400 group-hover:text-accent transition" />
                 </button>
               ))}
             </div>
@@ -406,24 +430,24 @@ export default function ChatPanel({
 
         {isLoading && (
           <div className="flex items-center gap-2 text-xs text-neutral-500 italic">
-            <Loader2 className="w-3.5 h-3.5 animate-spin text-[#3B4CC0]" />
-            <span>Pensieve is retrieving sources & streaming response...</span>
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-accent" />
+            <span>Retrieving sources and generating a response...</span>
           </div>
         )}
         <div ref={messagesEndRef} />
       </div>
 
       {/* Input Form */}
-      <div className="p-4 border-t border-[#E2E7EA] bg-white">
+      <div className="p-4 border-t border-rule bg-white">
         {!isSignedIn ? (
-          <div className="flex items-center justify-between gap-3 p-3 bg-[#F5F7F8] border border-[#E2E7EA] rounded-2xl text-xs">
-            <span className="text-[#141A22] font-medium">
-              Sign in to ask questions and chat with this memory vessel.
+          <div className="flex items-center justify-between gap-3 p-3 bg-vessel border border-rule rounded-2xl text-xs">
+            <span className="text-ink font-medium">
+              Sign in to start chatting with this notebook.
             </span>
             <SignInButton mode="modal">
               <button
                 type="button"
-                className="px-4 py-2 bg-[#141A22] hover:bg-[#3B4CC0] text-white font-semibold rounded-xl shadow-sm transition cursor-pointer text-xs shrink-0"
+                className="px-4 py-2 bg-ink hover:bg-accent text-white font-semibold rounded-xl shadow-sm transition cursor-pointer text-xs shrink-0"
               >
                 Sign In to Chat
               </button>
@@ -434,13 +458,13 @@ export default function ChatPanel({
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask Pensieve a question about your notebook sources..."
-              className="w-full pl-4 pr-12 py-3 text-xs bg-[#F5F7F8] border border-[#E2E7EA] rounded-2xl outline-none focus:ring-2 focus:ring-[#3B4CC0] focus:bg-white text-[#141A22] placeholder:text-neutral-400 transition"
+              placeholder="Ask a question about your sources..."
+              className="w-full pl-4 pr-12 py-3 text-xs bg-vessel border border-rule rounded-2xl outline-none focus:ring-2 focus:ring-accent focus:bg-white text-ink placeholder:text-neutral-400 transition"
             />
             <button
               type="submit"
               disabled={isLoading || !input.trim()}
-              className="absolute right-2 p-2.5 bg-[#141A22] text-white rounded-xl hover:bg-[#3B4CC0] disabled:opacity-40 transition cursor-pointer shadow-sm"
+              className="absolute right-2 p-2.5 bg-ink text-white rounded-xl hover:bg-accent disabled:opacity-40 transition cursor-pointer shadow-sm"
             >
               {isLoading ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -497,10 +521,10 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
     >
       {/* Avatar */}
       <div
-        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-semibold ${
+        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
           isUser
-            ? "bg-[#141A22] text-white shadow-xs"
-            : "bg-[#3B4CC0] text-white shadow-xs"
+            ? "bg-ink text-white shadow-xs"
+            : "bg-accent text-white shadow-xs"
         }`}
       >
         {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
@@ -513,10 +537,10 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
 
         {m.content && (
           <div
-            className={`overflow-hidden break-words rounded-2xl p-3.5 text-xs leading-relaxed md:p-4 shadow-2xs ${
+            className={`overflow-hidden break-words rounded-xl p-3.5 text-xs leading-relaxed md:p-4 shadow-xs ${
               isUser
-                ? "rounded-tr-none bg-[#141A22] text-white font-medium"
-                : "rounded-tl-none border border-[#E2E7EA] bg-[#F5F7F8] text-[#141A22]"
+                ? "rounded-tr-none bg-ink text-white font-medium"
+                : "rounded-tl-none border border-rule bg-vessel text-ink"
             }`}
           >
             {isUser ? (
@@ -531,7 +555,7 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
         {!isUser && m.citations && m.citations.length > 0 && (
           <div className="pt-1 space-y-1.5">
             <div className="flex items-center gap-1 text-[11px] font-semibold text-neutral-500">
-              <BookOpen className="w-3 h-3 text-[#1D9E75]" />
+              <BookOpen className="w-3 h-3 text-found" />
               <span>Citations ({m.citations.length})</span>
             </div>
 
@@ -541,9 +565,9 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
                   key={c.number}
                   type="button"
                   onClick={() => onCitationClick(c)}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium bg-white hover:bg-neutral-50 border border-[#E2E7EA] rounded-xl shadow-2xs text-[#141A22] hover:border-[#3B4CC0] transition cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium bg-white hover:bg-neutral-50 border border-rule rounded-lg shadow-xs text-ink hover:border-accent transition cursor-pointer"
                 >
-                  <span className="font-semibold text-[#1D9E75] bg-[#1D9E75]/10 px-1 rounded border border-[#1D9E75]/20">
+                  <span className="font-semibold text-found bg-found/10 px-1 rounded border border-found/20">
                     [{c.number}]
                   </span>
                   <span className="max-w-[130px] truncate">{c.title}</span>
@@ -562,43 +586,56 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
   );
 });
 
+/**
+ * Renders citation markers as clickable chips and the small set of Markdown
+ * the model actually produces (**bold**, *italic*) as real elements — the
+ * model isn't told to avoid Markdown, so leaving it unparsed just shows the
+ * literal asterisks in the bubble.
+ */
 function renderProseWithInlineCitations(
   content: string,
   citations: CitationPayload[] | null | undefined,
   onCitationClick: (c: CitationPayload) => void
 ) {
-  if (!citations || citations.length === 0) {
-    return <div className="whitespace-pre-wrap">{content}</div>;
-  }
-
   const citationMap = new Map<number, CitationPayload>();
-  citations.forEach((c) => citationMap.set(c.number, c));
+  (citations || []).forEach((c) => citationMap.set(c.number, c));
 
-  const regex = /\[(\d+)\]/g;
+  // Checked in order at each position, so "**bold**" is claimed by the bold
+  // alternative before the italic one gets a chance to match its single `*`.
+  const regex = /\[(\d+)\]|\*\*(.+?)\*\*|\*(.+?)\*/g;
   const parts: React.ReactNode[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
+  let key = 0;
 
   while ((match = regex.exec(content)) !== null) {
-    const num = parseInt(match[1], 10);
     const beforeText = content.substring(lastIndex, match.index);
     if (beforeText) parts.push(beforeText);
 
-    const cit = citationMap.get(num);
-    if (cit) {
-      parts.push(
-        <button
-          key={`${match.index}-${num}`}
-          type="button"
-          onClick={() => onCitationClick(cit)}
-          title={`${cit.title} (${cit.humanLocator || ""})`}
-          className="inline-flex items-center justify-center mx-0.5 px-1.5 py-0.2 text-[10px] font-bold text-[#1D9E75] bg-[#1D9E75]/10 hover:bg-[#1D9E75]/20 rounded border border-[#1D9E75]/30 transition cursor-pointer"
-        >
-          [{num}]
-        </button>
-      );
-    } else {
-      parts.push(match[0]);
+    const [, citationNum, bold, italic] = match;
+
+    if (citationNum !== undefined) {
+      const num = parseInt(citationNum, 10);
+      const cit = citationMap.get(num);
+      if (cit) {
+        parts.push(
+          <button
+            key={key++}
+            type="button"
+            onClick={() => onCitationClick(cit)}
+            title={`${cit.title} (${cit.humanLocator || ""})`}
+            className="inline-flex items-center justify-center mx-0.5 px-1.5 py-0.2 text-[10px] font-bold text-found bg-found/10 hover:bg-found/20 rounded border border-found/30 transition cursor-pointer"
+          >
+            [{num}]
+          </button>
+        );
+      } else {
+        parts.push(match[0]);
+      }
+    } else if (bold !== undefined) {
+      parts.push(<strong key={key++} className="font-semibold">{bold}</strong>);
+    } else if (italic !== undefined) {
+      parts.push(<em key={key++}>{italic}</em>);
     }
 
     lastIndex = regex.lastIndex;

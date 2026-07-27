@@ -3,16 +3,17 @@
 @tailwind utilities;
 
 :root {
-  --ink: #141A22;
-  --muted: #6E7781;
-  --vessel: #F5F7F8;
+  --ink: #1A1D26;
+  --muted: #6B6F76;
+  --vessel: #FAF9F6;
   --surface: #FFFFFF;
   --surface-elevated: #FFFFFF;
-  --rule: #E2E7EA;
-  --accent: #3B4CC0;
-  --glow: #0969DA;
-  --found: #1D9E75;
-  --gold: #D97706;
+  --rule: #E6E4DD;
+  --accent: #2C4A7C;
+  --secondary: #C1652D;
+  --glow: #C1652D;
+  --found: #4B7A51;
+  --gold: #B8802E;
 }
 
 :where(button, a, input, textarea, select, [tabindex]):focus-visible {
@@ -30,24 +31,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Ambient Subtle Light Mesh Background */
-.bg-mesh {
-  background-color: #F5F7F8;
-  background-image: 
-    radial-gradient(at 15% 15%, rgba(59, 76, 192, 0.05) 0px, transparent 45%),
-    radial-gradient(at 85% 85%, rgba(29, 158, 117, 0.05) 0px, transparent 45%),
-    radial-gradient(at 50% 50%, rgba(245, 247, 248, 1) 0px, transparent 100%);
-}
-
 /* Glassmorphism Light Utilities */
-.glass-panel {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(226, 231, 234, 0.8);
-  transform: translateZ(0);
-}
-
 .glass-header {
   background: rgba(245, 247, 248, 0.90);
   backdrop-filter: blur(12px);
@@ -88,21 +72,3 @@ body {
   background: #C4CDD3;
 }
 
-/* Keyframe Animations */
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-4px); }
-}
-
-@keyframes pulseGlow {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 0.9; }
-}
-
-.animate-float {
-  animation: float 4s ease-in-out infinite;
-}
-
-.animate-pulse-glow {
-  animation: pulseGlow 2s ease-in-out infinite;
-}

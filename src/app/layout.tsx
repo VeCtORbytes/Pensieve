@@ -20,8 +20,8 @@ const monoFont = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Pensieve — Grounded AI Notebook",
-  description: "A vessel for your knowledge sources and grounded research.",
+  title: "Pensieve",
+  description: "Ask grounded questions about your PDFs, articles, videos, and notes.",
 };
 
 export default function RootLayout({
@@ -34,7 +34,7 @@ export default function RootLayout({
       lang="en"
       className={`${serifFont.variable} ${interFont.variable} ${monoFont.variable}`}
     >
-      <body className="antialiased bg-[#F5F7F8] text-[#141A22] font-sans-body selection:bg-[#3B4CC0] selection:text-white">
+      <body className="antialiased bg-vessel text-ink font-sans-body selection:bg-accent selection:text-white">
         <ClerkProvider>
           {children}
         </ClerkProvider>

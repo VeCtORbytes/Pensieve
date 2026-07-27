@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, FileText, File, Link2, Video, Upload, X, ArrowRight, Sparkles } from "lucide-react";
+import { Search, FileText, File, Link2, Video, Upload, X, ArrowRight } from "lucide-react";
 
 interface CommandPaletteProps {
   notebookId: string;
@@ -71,10 +71,10 @@ export default function CommandPalette({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-3xl max-w-xl w-full shadow-2xl overflow-hidden border border-[#E2E7EA] text-[#141A22] animate-in fade-in zoom-in-95 duration-150"
+        className="bg-white rounded-3xl max-w-xl w-full shadow-2xl overflow-hidden border border-rule text-ink animate-in fade-in zoom-in-95 duration-150"
       >
         {/* Search Bar */}
-        <div className="flex items-center px-4 py-1 border-b border-[#E2E7EA] bg-[#F5F7F8]">
+        <div className="flex items-center px-4 py-1 border-b border-rule bg-vessel">
           <Search className="w-4 h-4 text-neutral-400 shrink-0" />
           <input
             autoFocus
@@ -82,12 +82,12 @@ export default function CommandPalette({
             placeholder="Search sources or select starter prompt (ESC to close)..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full px-3 py-3.5 text-xs bg-transparent outline-none text-[#141A22] placeholder-neutral-400 font-sans"
+            className="w-full px-3 py-3.5 text-xs bg-transparent outline-none text-ink placeholder-neutral-400 font-sans"
           />
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 text-neutral-400 hover:text-[#141A22] hover:bg-white rounded-xl transition cursor-pointer"
+            className="p-1.5 text-neutral-400 hover:text-ink hover:bg-white rounded-xl transition cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -99,7 +99,7 @@ export default function CommandPalette({
           {filteredSources.length > 0 && (
             <div className="space-y-1">
               <div className="px-3 py-1 text-[10px] uppercase font-semibold text-neutral-400 tracking-wider flex items-center gap-1">
-                <FileText className="w-3 h-3 text-[#3B4CC0]" />
+                <FileText className="w-3 h-3 text-accent" />
                 Sources ({filteredSources.length})
               </div>
               {filteredSources.map((s) => (
@@ -110,15 +110,15 @@ export default function CommandPalette({
                     if (onSelectSource) onSelectSource(s);
                     onClose();
                   }}
-                  className="w-full text-left p-3 rounded-2xl hover:bg-[#F5F7F8] border border-transparent hover:border-[#E2E7EA] flex items-center justify-between text-xs transition cursor-pointer group"
+                  className="w-full text-left p-3 rounded-2xl hover:bg-vessel border border-transparent hover:border-rule flex items-center justify-between text-xs transition cursor-pointer group"
                 >
                   <div className="flex items-center gap-2.5 truncate">
                     <TypeIcon type={s.type} />
-                    <span className="font-medium text-[#141A22] group-hover:text-[#3B4CC0] truncate transition">
+                    <span className="font-medium text-ink group-hover:text-accent truncate transition">
                       {s.title}
                     </span>
                   </div>
-                  <span className="text-[10px] font-mono text-neutral-500 uppercase bg-[#F5F7F8] px-2 py-0.5 rounded-lg border border-[#E2E7EA]">
+                  <span className="text-[10px] font-mono text-neutral-500 uppercase bg-vessel px-2 py-0.5 rounded-lg border border-rule">
                     {s.type}
                   </span>
                 </button>
@@ -130,7 +130,7 @@ export default function CommandPalette({
           {starterPrompts.length > 0 && (
             <div className="space-y-1">
               <div className="px-3 py-1 text-[10px] uppercase font-semibold text-neutral-400 tracking-wider flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-[#3B4CC0]" />
+                <ArrowRight className="w-3 h-3 text-accent" />
                 Starter Prompts
               </div>
               {starterPrompts.map((p, idx) => (
@@ -141,10 +141,10 @@ export default function CommandPalette({
                     if (onSelectPrompt) onSelectPrompt(p);
                     onClose();
                   }}
-                  className="w-full text-left p-3 rounded-2xl hover:bg-[#F5F7F8] border border-transparent hover:border-[#E2E7EA] flex items-center justify-between text-xs text-neutral-700 transition cursor-pointer group"
+                  className="w-full text-left p-3 rounded-2xl hover:bg-vessel border border-transparent hover:border-rule flex items-center justify-between text-xs text-neutral-700 transition cursor-pointer group"
                 >
                   <span>{p}</span>
-                  <ArrowRight className="w-3.5 h-3.5 text-neutral-400 group-hover:text-[#3B4CC0] transition transform group-hover:translate-x-1" />
+                  <ArrowRight className="w-3.5 h-3.5 text-neutral-400 group-hover:text-accent transition transform group-hover:translate-x-1" />
                 </button>
               ))}
             </div>

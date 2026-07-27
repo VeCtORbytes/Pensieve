@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { File, Link2, Video, FileText, Upload, Plus, Sparkles, BookOpen, Wand2 } from "lucide-react";
+import { File, Link2, Video, FileText, Upload, Plus } from "lucide-react";
 import SourcePanel, { TabType } from "@/components/SourcePanel";
 
 export default function EmptyNotebook({ notebookId }: { notebookId: string }) {
@@ -33,21 +33,15 @@ export default function EmptyNotebook({ notebookId }: { notebookId: string }) {
   }
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-12 bg-[#F5F7F8] bg-mesh min-h-[calc(100vh-60px)] text-[#141A22]">
-      <div className="max-w-2xl w-full text-center space-y-8 glass-panel p-8 sm:p-10 rounded-3xl shadow-xl border border-[#E2E7EA]">
+    <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-12 bg-vessel min-h-[calc(100vh-60px)] text-ink">
+      <div className="max-w-2xl w-full text-center space-y-8 bg-surface p-8 sm:p-10 rounded-2xl shadow-xs border border-rule">
         <div className="space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-[#E2E7EA] shadow-2xs">
-            <Sparkles className="w-3.5 h-3.5 text-[#3B4CC0] animate-pulse" />
-            <span className="text-[11px] font-semibold text-[#141A22]">
-              Empty Knowledge Vessel
-            </span>
-          </div>
-
-          <h1 className="font-serif-display text-4xl md:text-5xl text-[#141A22] font-normal tracking-tight">
-            Pour Knowledge into Pensieve
+          <h1 className="font-serif-display text-4xl md:text-5xl text-ink font-normal tracking-tight">
+            Add your first source
           </h1>
           <p className="text-xs text-neutral-500 max-w-md mx-auto leading-relaxed">
-            Upload PDFs, websites, YouTube videos, transcripts, or notes. Receive grounded answers with exact position locators.
+            Upload PDFs, websites, YouTube videos, transcripts, or notes to
+            start asking grounded questions.
           </p>
         </div>
 
@@ -79,7 +73,7 @@ export default function EmptyNotebook({ notebookId }: { notebookId: string }) {
               title: "Raw Text",
               desc: "Paste notes, transcripts, or unformatted text blocks.",
               icon: FileText,
-              color: "text-[#141A22] bg-neutral-100 border-[#E2E7EA] group-hover:border-[#3B4CC0]",
+              color: "text-ink bg-neutral-100 border-rule group-hover:border-accent",
             },
             {
               type: "vtt" as TabType,
@@ -95,16 +89,16 @@ export default function EmptyNotebook({ notebookId }: { notebookId: string }) {
                 key={item.type}
                 type="button"
                 onClick={() => setActiveModalTab(item.type)}
-                className="p-4 rounded-2xl bg-white border border-[#E2E7EA] hover:border-[#3B4CC0] shadow-2xs hover:shadow-lg transition duration-300 text-left space-y-3 group cursor-pointer flex flex-col justify-between"
+                className="p-4 rounded-xl bg-surface border border-rule hover:border-accent shadow-xs hover:shadow-md transition duration-300 text-left space-y-3 group cursor-pointer flex flex-col justify-between"
               >
                 <div className="flex items-center justify-between">
                   <div className={`w-9 h-9 rounded-xl flex items-center justify-center border ${item.color} transition`}>
                     <Icon className="w-4 h-4" />
                   </div>
-                  <Plus className="w-4 h-4 text-neutral-400 group-hover:text-[#3B4CC0] transition transform group-hover:scale-110" />
+                  <Plus className="w-4 h-4 text-neutral-400 group-hover:text-accent transition transform group-hover:scale-110" />
                 </div>
                 <div>
-                  <h3 className="text-xs font-semibold text-[#141A22] group-hover:text-[#3B4CC0] transition">
+                  <h3 className="text-xs font-semibold text-ink group-hover:text-accent transition">
                     {item.title}
                   </h3>
                   <p className="text-[11px] text-neutral-500 leading-snug mt-0.5">
@@ -121,20 +115,20 @@ export default function EmptyNotebook({ notebookId }: { notebookId: string }) {
           <button
             type="button"
             onClick={() => setActiveModalTab("text")}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-[#141A22] hover:bg-[#3B4CC0] text-white text-xs font-semibold rounded-xl shadow-md transition cursor-pointer"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-ink hover:bg-accent text-white text-xs font-semibold rounded-xl shadow-md transition cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            Add First Source Now
+            Add a source
           </button>
 
           <button
             type="button"
             disabled={isIngestingSample}
             onClick={handleIngestSampleData}
-            className="inline-flex items-center gap-2 px-5 py-3 bg-white text-[#141A22] text-xs font-semibold rounded-xl border border-[#E2E7EA] hover:border-[#3B4CC0] shadow-2xs transition cursor-pointer disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-5 py-3 bg-surface text-ink text-xs font-semibold rounded-xl border border-rule hover:border-accent shadow-xs transition cursor-pointer disabled:opacity-50"
           >
-            <Wand2 className="w-4 h-4 text-[#1D9E75]" />
-            {isIngestingSample ? "Ingesting Sample..." : "Try with Sample Note"}
+            <FileText className="w-4 h-4 text-found" />
+            {isIngestingSample ? "Adding sample..." : "Try a sample note"}
           </button>
         </div>
 

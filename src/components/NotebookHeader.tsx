@@ -2,13 +2,11 @@
 
 import { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
-import { ArrowLeft, Trash2, Volume2, Search, Loader2, Sparkles, Layers } from "lucide-react";
+import { ArrowLeft, Trash2, Search, Loader2, Waypoints } from "lucide-react";
 import { renameNotebook, deleteNotebook } from "@/app/actions/notebooks";
-import AudioPlayer from "@/components/AudioPlayer";
 import CommandPalette from "@/components/CommandPalette";
 import SourceViewerModal from "@/components/SourceViewerModal";
 import AuthControls from "@/components/AuthControls";
-import StudyToolsModal from "@/components/StudyToolsModal";
 import IngestionPipelineVisualizer from "@/components/IngestionPipelineVisualizer";
 
 export default function NotebookHeader({
@@ -21,21 +19,14 @@ export default function NotebookHeader({
   const [value, setValue] = useState(title);
   const [isPending, startTransition] = useTransition();
 
-  // Audio Summary states
-  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
-  const [audioData, setAudioData] = useState<{ audioUrl: string; scriptText: string } | null>(null);
-
   // Command Palette states
   const [isCmdPaletteOpen, setIsCmdPaletteOpen] = useState(false);
   const [selectedViewerSource, setSelectedViewerSource] = useState<any | null>(null);
 
-  // Study Tools state
-  const [isStudyToolsOpen, setIsStudyToolsOpen] = useState(false);
-
-  // Visualizer State
+  // Pipeline Visualizer state
   const [isVisualizerOpen, setIsVisualizerOpen] = useState(false);
 
-  // Robust capture-phase Command+K / Ctrl+K keyboard shortcut listener
+  // Capture-phase so this fires even when focus is inside an input/textarea.
   useEffect(() => {
     function handleGlobalKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && (e.key.toLowerCase() === "k" || e.code === "KeyK")) {
@@ -62,43 +53,19 @@ export default function NotebookHeader({
     startTransition(() => deleteNotebook(id));
   }
 
-  async function handleGenerateAudioOverview() {
-    try {
-      setIsGeneratingAudio(true);
-      const res = await fetch("/api/audio-summary", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notebookId: id }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        alert(err.error || "Failed to generate audio overview");
-        return;
-      }
-
-      const data = await res.json();
-      setAudioData({ audioUrl: data.audioUrl, scriptText: data.scriptText });
-    } catch (err: any) {
-      alert("Audio generation error: " + (err.message || "Failed"));
-    } finally {
-      setIsGeneratingAudio(false);
-    }
-  }
-
   return (
     <>
-      <header className="flex items-center gap-2 border-b border-[#E2E7EA] bg-white/90 backdrop-blur-md px-3 py-2.5 sm:gap-3 sm:px-6 sm:py-3 sticky top-0 z-30 shadow-2xs text-[#141A22]">
+      <header className="flex items-center gap-2 border-b border-rule bg-white/90 backdrop-blur-md px-3 py-2.5 sm:gap-3 sm:px-6 sm:py-3 sticky top-0 z-30 text-ink">
         <Link
           href="/"
           aria-label="Back to all notebooks"
-          className="shrink-0 rounded-xl p-2 text-neutral-400 hover:text-[#141A22] hover:bg-[#F5F7F8] transition"
+          className="shrink-0 rounded-xl p-2 text-neutral-400 hover:text-ink hover:bg-vessel transition"
         >
           <ArrowLeft className="h-4 w-4" />
         </Link>
 
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-[#1D9E75] shrink-0" />
+          <div className="w-2 h-2 rounded-full bg-found shrink-0" />
           <input
             value={value}
             aria-label="Notebook title"
@@ -111,7 +78,7 @@ export default function NotebookHeader({
                 e.currentTarget.blur();
               }
             }}
-            className="w-full max-w-[min(28ch,100%)] truncate rounded-lg border border-transparent bg-transparent px-2 py-1 font-serif-display text-lg font-normal text-[#141A22] outline-none transition hover:border-[#E2E7EA] hover:bg-white focus:border-[#3B4CC0] focus:bg-white sm:max-w-[40ch]"
+            className="w-full max-w-[min(28ch,100%)] truncate rounded-lg border border-transparent bg-transparent px-2 py-1 font-serif-display text-lg font-normal text-ink outline-none transition hover:border-rule hover:bg-white focus:border-accent focus:bg-white sm:max-w-[40ch]"
           />
           {isPending && (
             <span className="hidden shrink-0 font-mono text-xs text-neutral-400 sm:inline">
@@ -120,58 +87,26 @@ export default function NotebookHeader({
           )}
         </div>
 
-        {/* Pipeline Architecture Visualizer Button */}
+        {/* Pipeline Visualizer Trigger */}
         <button
           type="button"
           onClick={() => setIsVisualizerOpen(true)}
-          aria-label="Open RAG Pipeline Visualizer"
-          className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl bg-[#3B4CC0]/10 hover:bg-[#3B4CC0]/20 border border-[#3B4CC0]/30 px-3 py-1.5 text-xs font-semibold text-[#3B4CC0] transition shadow-2xs"
+          aria-label="Open ingestion pipeline visualizer"
+          className="hidden shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border border-rule bg-white px-3 py-1.5 text-xs font-semibold text-ink shadow-xs transition hover:border-accent md:flex"
         >
-          <Layers className="h-3.5 w-3.5 text-[#3B4CC0] animate-pulse" />
-          <span className="hidden md:inline">RAG Visualizer</span>
+          <Waypoints className="h-3.5 w-3.5 text-accent" />
+          <span className="hidden lg:inline">Pipeline</span>
         </button>
 
         {/* Command Palette Trigger */}
         <button
           type="button"
           onClick={() => setIsCmdPaletteOpen(true)}
-          className="hidden shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border border-[#E2E7EA] bg-white px-3 py-1.5 font-mono text-xs text-neutral-600 shadow-2xs transition hover:border-[#3B4CC0] md:flex"
+          className="hidden shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border border-rule bg-white px-3 py-1.5 font-mono text-xs text-neutral-600 shadow-xs transition hover:border-accent md:flex"
         >
           <Search className="h-3.5 w-3.5 text-neutral-400" />
           <span>Search</span>
-          <kbd className="rounded border border-[#E2E7EA] bg-[#F5F7F8] px-1 text-[10px] text-neutral-700">⌘K</kbd>
-        </button>
-
-        {/* Study Tools Button */}
-        <button
-          type="button"
-          onClick={() => setIsStudyToolsOpen(true)}
-          aria-label="Open AI Study Tools"
-          className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl bg-white hover:bg-[#F5F7F8] border border-[#E2E7EA] hover:border-[#3B4CC0] px-3.5 py-1.5 text-xs font-semibold text-[#141A22] shadow-2xs transition"
-        >
-          <Sparkles className="h-3.5 w-3.5 text-[#3B4CC0] animate-pulse" />
-          <span className="hidden sm:inline">Study Tools</span>
-        </button>
-
-        {/* Audio Overview Button */}
-        <button
-          type="button"
-          disabled={isGeneratingAudio}
-          onClick={handleGenerateAudioOverview}
-          aria-label="Generate audio overview"
-          className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl bg-[#141A22] hover:bg-[#3B4CC0] px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs transition disabled:opacity-50"
-        >
-          {isGeneratingAudio ? (
-            <>
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              <span className="hidden sm:inline">Generating Audio...</span>
-            </>
-          ) : (
-            <>
-              <Volume2 className="h-3.5 w-3.5 text-amber-300 animate-pulse" />
-              <span className="hidden sm:inline">Audio Overview</span>
-            </>
-          )}
+          <kbd className="rounded border border-rule bg-vessel px-1 text-[10px] text-neutral-700">⌘K</kbd>
         </button>
 
         {/* Delete Notebook Button */}
@@ -189,28 +124,9 @@ export default function NotebookHeader({
         <AuthControls />
       </header>
 
-      {/* RAG Pipeline Visualizer Modal */}
+      {/* Pipeline Visualizer Modal */}
       {isVisualizerOpen && (
-        <IngestionPipelineVisualizer
-          onClose={() => setIsVisualizerOpen(false)}
-        />
-      )}
-
-      {/* Study Tools Modal */}
-      {isStudyToolsOpen && (
-        <StudyToolsModal
-          notebookId={id}
-          onClose={() => setIsStudyToolsOpen(false)}
-        />
-      )}
-
-      {/* Floating Audio Player */}
-      {audioData && (
-        <AudioPlayer
-          audioUrl={audioData.audioUrl}
-          scriptText={audioData.scriptText}
-          onClose={() => setAudioData(null)}
-        />
+        <IngestionPipelineVisualizer onClose={() => setIsVisualizerOpen(false)} />
       )}
 
       {/* Command Palette Modal */}
