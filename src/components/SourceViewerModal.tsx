@@ -59,6 +59,7 @@ export default function SourceViewerModal({
   const [currentPage, setCurrentPage] = useState(locator?.page || 1);
   const markRef = useRef<HTMLElement>(null);
   const [copied, setCopied] = useState(false);
+  const [loadingPdf, setLoadingPdf] = useState(false);
 
   const { variant, select } = useReadingVariant(notebookId);
 
@@ -68,10 +69,7 @@ export default function SourceViewerModal({
   const [variantLoading, setVariantLoading] = useState(false);
   const [variantError, setVariantError] = useState<string | null>(null);
 
-  // The source list/command palette only carry lightweight fields (no blobUrl/
-  // rawText, to keep polling cheap), so fetch the full row here when neither was
-  // provided. The citation-click path always supplies rawText (the cited excerpt)
-  // and intentionally skips this fetch to keep showing just that excerpt.
+  // Always ensure full source payload (blobUrl, url, rawText) is fetched on demand
   const [fetchedSource, setFetchedSource] = useState<{
     url?: string | null;
     blobUrl?: string | null;
@@ -79,20 +77,24 @@ export default function SourceViewerModal({
   } | null>(null);
 
   useEffect(() => {
-    if (source.rawText != null || source.blobUrl != null) return;
+    if (source.blobUrl || source.url) return;
     let isMounted = true;
+    setLoadingPdf(true);
 
     fetch(`/api/sources/${source.id}`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (isMounted && data) setFetchedSource(data);
       })
-      .catch((err) => console.error("Failed to load full source content:", err));
+      .catch((err) => console.error("Failed to load full source content:", err))
+      .finally(() => {
+        if (isMounted) setLoadingPdf(false);
+      });
 
     return () => {
       isMounted = false;
     };
-  }, [source.id, source.rawText, source.blobUrl]);
+  }, [source.id, source.blobUrl, source.url]);
 
   const effectiveUrl = fetchedSource?.url ?? source.url;
   const effectiveBlobUrl = fetchedSource?.blobUrl ?? source.blobUrl;
@@ -185,9 +187,6 @@ export default function SourceViewerModal({
   const activeSpan: SegmentSpan | null = useMemo(() => {
     if (!effectiveLocator) return null;
 
-    // The ORIGINAL variant's char offsets are already on the locator itself —
-    // no need for a segment-spans fetch (which never happens for ORIGINAL; that
-    // request is only ever made for the ENGLISH/ROMANIZED variants below).
     if (variant === "ORIGINAL") {
       return [effectiveLocator.charStart, effectiveLocator.charEnd];
     }
@@ -375,7 +374,12 @@ export default function SourceViewerModal({
               </div>
 
               <div className="flex-1 bg-vessel relative flex items-center justify-center p-4">
-                {effectiveBlobUrl || effectiveUrl ? (
+                {loadingPdf ? (
+                  <div className="text-center text-neutral-500 space-y-2">
+                    <Loader2 className="w-6 h-6 mx-auto animate-spin text-accent" />
+                    <p className="text-xs font-medium text-ink">Loading PDF Document Preview...</p>
+                  </div>
+                ) : (effectiveBlobUrl || effectiveUrl) ? (
                   <object
                     data={`${effectiveBlobUrl || effectiveUrl}#page=${currentPage}`}
                     type="application/pdf"
