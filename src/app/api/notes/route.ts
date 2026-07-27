@@ -18,17 +18,13 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ notes });
   } catch (error: any) {
+    console.error("GET notes error:", error);
     return NextResponse.json({ error: error.message || "Failed to fetch notes" }, { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-    }
-
     const { notebookId, title = "Untitled Note", content = "" } = await req.json();
     if (!notebookId) {
       return NextResponse.json({ error: "notebookId is required" }, { status: 400 });
@@ -44,6 +40,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ note }, { status: 201 });
   } catch (error: any) {
+    console.error("POST note error:", error);
     return NextResponse.json({ error: error.message || "Failed to create note" }, { status: 500 });
   }
 }

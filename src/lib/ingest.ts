@@ -18,6 +18,8 @@ import {
   variantSegments,
 } from "./variants";
 import { metaFromSegments } from "./segments";
+import { openai } from "@ai-sdk/openai";
+import { generateText } from "ai";
 
 export interface IngestArgs {
   sourceId: string;
@@ -31,13 +33,6 @@ export interface IngestArgs {
  * Extract -> detect language -> build variants -> chunk -> embed -> upsert,
  * driving the source's status column as it goes. Shared by initial ingestion and
  * re-indexing.
- *
- * Both the ORIGINAL and the ENGLISH rendering are indexed, so a question asked
- * in either language retrieves well. Their chunks share segment ordinals, which
- * the chat route uses to recognise the two copies of a passage as one hit.
- *
- * Existing vectors for the source are removed first, so first runs and retries
- * are idempotent rather than accumulating duplicates.
  */
 export async function ingestSource({
   sourceId,
@@ -109,10 +104,39 @@ export async function ingestSource({
     }
 
     // Phase 3: READY
-    await db.source.update({
+    const sourceObj = await db.source.update({
       where: { id: sourceId },
       data: { status: "READY", chunkCount: indexedChunks, error: null },
     });
+
+    // Automatically generate an initial executive overview AI message in the notebook chat!
+    try {
+      const summaryPrompt = `Generate a concise 2-paragraph overview summarizing the main topics, key findings, and core concepts in this source document titled "${sourceObj.title}".`;
+      const { text: summaryText } = await generateText({
+        model: openai("gpt-4o-mini"),
+        system: "You are Notebook Assistant. Synthesize a clear, helpful initial source summary for the notebook user.",
+        prompt: `DOCUMENT TITLE: ${sourceObj.title}\n\nCONTENT:\n${rawText.slice(0, 8000)}\n\n${summaryPrompt}`,
+      });
+
+      await db.message.create({
+        data: {
+          notebookId,
+          role: "assistant",
+          content: `### 📄 Overview: ${sourceObj.title}\n\n${summaryText}\n\n*Source ingested with ${indexedChunks} chunks. Ask me any questions about this content!*`,
+          citations: [
+            {
+              sourceId: sourceObj.id,
+              title: sourceObj.title,
+              type: sourceObj.type,
+              url: sourceObj.url,
+              blobUrl: sourceObj.blobUrl,
+            },
+          ] as any,
+        },
+      });
+    } catch (msgErr) {
+      console.error("Initial overview chat message creation notice:", msgErr);
+    }
   } catch (err: any) {
     console.error(`Source ${sourceId} ingestion failed:`, err);
     await db.source
