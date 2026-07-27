@@ -16,7 +16,7 @@ import {
   Layers,
   Download,
 } from "lucide-react";
-import { useAuth, SignInButton } from "@clerk/nextjs";
+import { useAuth, useUser, SignInButton } from "@clerk/nextjs";
 import { CitationPayload, RetrievalTracePayload } from "@/app/api/chat/route";
 import SourceViewerModal from "@/components/SourceViewerModal";
 import RetrievalTrace from "@/components/RetrievalTrace";
@@ -61,6 +61,7 @@ export default function ChatPanel({
   onOpenStudio?: () => void;
 }) {
   const { isSignedIn } = useAuth();
+  const { user } = useUser();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -169,8 +170,6 @@ export default function ChatPanel({
           const trimmed = line.trim();
           if (!trimmed) continue;
 
-          // Data stream protocol: "2:" carries out-of-band JSON parts (trace,
-          // citations); "0:" carries a plain-text token.
           if (trimmed.startsWith("2:")) {
             try {
               const parts = JSON.parse(trimmed.substring(2));
@@ -253,11 +252,6 @@ export default function ChatPanel({
   }
 
   const handleCitationClick = useCallback((citation: CitationPayload) => {
-    // PDF/YouTube need the actual document (blobUrl) or video (url) fetched to
-    // open at the right page/timestamp — passing the excerpt as rawText would
-    // make SourceViewerModal think it already has everything and skip that
-    // fetch, so leave rawText unset for those and let the on-demand fetch fill
-    // in blobUrl/url/rawText from the full row instead.
     const isDocumentType = citation.type === "PDF" || citation.type === "YOUTUBE";
     setSelectedViewerSource({
       id: citation.sourceId,
@@ -423,6 +417,7 @@ export default function ChatPanel({
               key={m.id}
               message={m}
               isLoading={isLoading}
+              userImageUrl={user?.imageUrl}
               onCitationClick={handleCitationClick}
             />
           ))
@@ -498,20 +493,21 @@ export default function ChatPanel({
 }
 
 /**
- * Memoized so a streaming answer only re-renders its own bubble — without this,
- * every setMessages call during streaming re-ran the citation-regex parser
- * (renderProseWithInlineCitations) over every past message in the thread too.
+ * Memoized Chat Message Bubble supporting User Profile Image fallback.
  */
 const ChatMessageBubble = memo(function ChatMessageBubble({
   message: m,
   isLoading,
+  userImageUrl,
   onCitationClick,
 }: {
   message: MessageItem;
   isLoading: boolean;
+  userImageUrl?: string | null;
   onCitationClick: (c: CitationPayload) => void;
 }) {
   const isUser = m.role === "user";
+  const [imageError, setImageError] = useState(false);
 
   return (
     <div
@@ -521,13 +517,26 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
     >
       {/* Avatar */}
       <div
-        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold overflow-hidden border border-rule ${
           isUser
             ? "bg-ink text-white shadow-xs"
             : "bg-accent text-white shadow-xs"
         }`}
       >
-        {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+        {isUser ? (
+          userImageUrl && !imageError ? (
+            <img
+              src={userImageUrl}
+              alt="User Avatar"
+              className="w-full h-full object-cover rounded-full"
+              onError={() => setImageError(true)}
+            />
+          ) : (
+            <User className="w-4 h-4" />
+          )
+        ) : (
+          <Bot className="w-4 h-4" />
+        )}
       </div>
 
       <div className={`min-w-0 max-w-[85%] space-y-3 ${isUser ? "items-end" : ""}`}>
@@ -587,10 +596,7 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
 });
 
 /**
- * Renders citation markers as clickable chips and the small set of Markdown
- * the model actually produces (**bold**, *italic*) as real elements — the
- * model isn't told to avoid Markdown, so leaving it unparsed just shows the
- * literal asterisks in the bubble.
+ * Renders citation markers as clickable chips and inline Markdown formatting.
  */
 function renderProseWithInlineCitations(
   content: string,
@@ -600,8 +606,6 @@ function renderProseWithInlineCitations(
   const citationMap = new Map<number, CitationPayload>();
   (citations || []).forEach((c) => citationMap.set(c.number, c));
 
-  // Checked in order at each position, so "**bold**" is claimed by the bold
-  // alternative before the italic one gets a chance to match its single `*`.
   const regex = /\[(\d+)\]|\*\*(.+?)\*\*|\*(.+?)\*/g;
   const parts: React.ReactNode[] = [];
   let lastIndex = 0;
