@@ -115,7 +115,7 @@ export default function RetrievalTrace({
 
           {/* Fused Candidates List */}
           <div className="space-y-1.5 pt-1">
-            {shown.map((c, i) => (
+            {shown.map((c: any, i: number) => (
               <div key={i} className="flex items-center gap-2 text-[11px]">
                 <span className="w-20 shrink-0 truncate text-[#141A22] font-medium sm:w-28">
                   {c.title}

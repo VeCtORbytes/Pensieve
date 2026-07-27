@@ -41,7 +41,8 @@ const QueryVariantsSchema = z.object({
 export async function generateAdvancedQueryVariants(
   userPrompt: string,
   history: Array<{ role: string; content: string }> = []
-): Promise<QueryVariants> {
+): Promise<QueryVariants & { timingMs: number }> {
+  const t0 = performance.now();
   const conversationContext = history
     .slice(-4)
     .map((m) => `${m.role.toUpperCase()}: ${m.content}`)
@@ -64,17 +65,21 @@ ${conversationContext || "None"}
 User Prompt: "${userPrompt}"`,
     });
 
+    const timingMs = +(performance.now() - t0).toFixed(2);
     return {
       rewrittenQuery: object.rewrittenQuery || userPrompt,
       stepBackQuery: object.stepBackQuery || userPrompt,
       hydePassage: object.hydePassage || userPrompt,
+      timingMs,
     };
   } catch (err) {
+    const timingMs = +(performance.now() - t0).toFixed(2);
     console.warn("Failed to generate advanced query variants, using fallback:", err);
     return {
       rewrittenQuery: userPrompt,
       stepBackQuery: userPrompt,
       hydePassage: userPrompt,
+      timingMs,
     };
   }
 }
@@ -92,13 +97,16 @@ export async function executeAdvancedRAGSearch({
   userPrompt: string;
   history?: Array<{ role: string; content: string }>;
   limit?: number;
-}): Promise<AdvancedRAGResult> {
+}): Promise<AdvancedRAGResult & { timings: Record<string, number> }> {
+  const tStart = performance.now();
   await ensureCollection();
 
   // 1. Generate Query Expansion Variants (Step-Back & HyDE)
-  const variants = await generateAdvancedQueryVariants(userPrompt, history);
+  const variantsWithTiming = await generateAdvancedQueryVariants(userPrompt, history);
+  const { timingMs: expansionMs, ...variants } = variantsWithTiming;
 
   // 2. Generate Embeddings for all 4 query representations in parallel
+  const tEmbed0 = performance.now();
   const queryTexts = [
     userPrompt,
     variants.rewrittenQuery,
@@ -107,6 +115,7 @@ export async function executeAdvancedRAGSearch({
   ];
 
   const embeddings = await generateEmbeddings(queryTexts);
+  const embeddingMs = +(performance.now() - tEmbed0).toFixed(2);
 
   const filter = {
     must: [
@@ -118,6 +127,7 @@ export async function executeAdvancedRAGSearch({
   };
 
   // 3. Execute 4 Parallel Qdrant Vector Searches
+  const tVector0 = performance.now();
   const searchPromises = embeddings.map((vector) =>
     qdrant.search(NOTEBOOK_COLLECTION_NAME, {
       vector,
@@ -128,8 +138,10 @@ export async function executeAdvancedRAGSearch({
   );
 
   const [hitsOriginal, hitsRewritten, hitsStepBack, hitsHyde] = await Promise.all(searchPromises);
+  const vectorSearchMs = +(performance.now() - tVector0).toFixed(2);
 
   // 4. Reciprocal Rank Fusion (RRF) Constant
+  const tRrf0 = performance.now();
   const K_RRF = 60;
   const pointMap = new Map<
     string,
@@ -182,8 +194,18 @@ export async function executeAdvancedRAGSearch({
     }))
     .sort((a, b) => b.rrfScore - a.rrfScore);
 
+  const rrfMs = +(performance.now() - tRrf0).toFixed(2);
+  const totalRagMs = +(performance.now() - tStart).toFixed(2);
+
   return {
     variants,
     fusedPoints,
+    timings: {
+      expansionMs,
+      embeddingMs,
+      vectorSearchMs,
+      rrfMs,
+      totalRagMs,
+    },
   };
 }
