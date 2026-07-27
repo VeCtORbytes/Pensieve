@@ -142,14 +142,12 @@ export default async function HomePage() {
         )}
       </div>
 
-      {/* Footer with Social Links */}
-      <footer className="mx-auto max-w-5xl w-full pt-16 pb-6 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-rule text-xs text-neutral-500 mt-12">
+      {/* Clean Minimal Footer */}
+      <footer className="mx-auto max-w-5xl w-full pt-16 pb-6 flex items-center justify-center border-t border-rule text-xs text-neutral-500 mt-12">
         <div className="flex items-center gap-2">
           <PensieveLogo className="w-5 h-5" />
           <span>Pensieve AI Studio © 2026</span>
         </div>
-
-        <SocialLinks />
       </footer>
     </main>
   );
