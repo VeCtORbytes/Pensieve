@@ -11,9 +11,9 @@ export interface SocialLinksProps {
 }
 
 export default function SocialLinks({
-  githubUrl = "https://github.com/VeCtORbytes/Pensieve",
-  twitterUrl = "https://x.com",
-  linkedinUrl = "https://linkedin.com",
+  githubUrl = "https://github.com/VeCtORbytes",
+  twitterUrl = "https://x.com/Sarthak_Gupta25",
+  linkedinUrl = "https://www.linkedin.com/in/sarthakgupta25/",
   websiteUrl,
   className = "",
 }: SocialLinksProps) {
@@ -24,7 +24,7 @@ export default function SocialLinks({
           href={githubUrl}
           target="_blank"
           rel="noopener noreferrer"
-          title="GitHub Repository"
+          title="GitHub (VeCtORbytes)"
           className="p-2 text-neutral-500 hover:text-ink hover:bg-vessel rounded-xl border border-transparent hover:border-rule transition cursor-pointer"
         >
           <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
@@ -38,7 +38,7 @@ export default function SocialLinks({
           href={twitterUrl}
           target="_blank"
           rel="noopener noreferrer"
-          title="X / Twitter"
+          title="X / Twitter (@Sarthak_Gupta25)"
           className="p-2 text-neutral-500 hover:text-ink hover:bg-vessel rounded-xl border border-transparent hover:border-rule transition cursor-pointer"
         >
           <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
@@ -52,7 +52,7 @@ export default function SocialLinks({
           href={linkedinUrl}
           target="_blank"
           rel="noopener noreferrer"
-          title="LinkedIn"
+          title="LinkedIn (Sarthak Gupta)"
           className="p-2 text-neutral-500 hover:text-[#0A66C2] hover:bg-blue-50 rounded-xl border border-transparent hover:border-blue-200 transition cursor-pointer"
         >
           <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
