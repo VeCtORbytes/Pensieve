@@ -4,6 +4,7 @@ import { Plus, BookOpen, Layers, Database, ArrowRight } from "lucide-react";
 import { db } from "@/lib/db";
 import { createNotebook } from "./actions/notebooks";
 import AuthControls from "@/components/AuthControls";
+import DeleteNotebookButton from "@/components/DeleteNotebookButton";
 
 export const dynamic = "force-dynamic";
 
@@ -95,15 +96,21 @@ export default async function HomePage() {
         ) : (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {notebooks.map((n) => (
-              <Link
+              <div
                 key={n.id}
-                href={`/notebook/${n.id}`}
-                className="group relative p-6 rounded-xl bg-surface border border-rule hover:border-accent shadow-xs hover:shadow-md transition-all duration-300 block space-y-4"
+                className="group relative p-6 rounded-xl bg-surface border border-rule hover:border-accent shadow-xs hover:shadow-md transition-all duration-300 flex flex-col justify-between space-y-4"
               >
                 <div className="space-y-1">
-                  <h2 className="text-base font-semibold text-ink group-hover:text-accent transition truncate">
-                    {n.title}
-                  </h2>
+                  <div className="flex items-start justify-between gap-2">
+                    <Link
+                      href={`/notebook/${n.id}`}
+                      className="text-base font-semibold text-ink group-hover:text-accent transition truncate flex-1 hover:underline"
+                    >
+                      {n.title}
+                    </Link>
+                    <DeleteNotebookButton notebookId={n.id} />
+                  </div>
+
                   <p className="text-[11px] font-mono text-neutral-400">
                     Updated {new Date(n.updatedAt).toLocaleDateString()}
                   </p>
@@ -113,11 +120,14 @@ export default async function HomePage() {
                   <span className="font-mono text-[11px] bg-vessel px-2.5 py-1 rounded-lg text-neutral-700 font-semibold border border-rule">
                     {n._count.sources} {n._count.sources === 1 ? "source" : "sources"}
                   </span>
-                  <span className="text-accent font-semibold text-xs flex items-center gap-1 opacity-0 group-hover:opacity-100 transition transform translate-x-1 group-hover:translate-x-0">
+                  <Link
+                    href={`/notebook/${n.id}`}
+                    className="text-accent font-semibold text-xs flex items-center gap-1 hover:underline cursor-pointer"
+                  >
                     Open <ArrowRight className="w-3.5 h-3.5" />
-                  </span>
+                  </Link>
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         )}
