@@ -10,6 +10,7 @@ import {
   XCircle,
   BookOpen,
   HelpCircle,
+  Languages,
 } from "lucide-react";
 
 export interface Flashcard {
@@ -29,6 +30,15 @@ export interface QuizQuestion {
   sourceTitle?: string;
 }
 
+const SUPPORTED_LANGUAGES = [
+  { code: "English", label: "English" },
+  { code: "Hinglish", label: "Hinglish (Hindi in Latin)" },
+  { code: "Hindi", label: "Hindi (हिन्दी)" },
+  { code: "Spanish", label: "Spanish (Español)" },
+  { code: "French", label: "French (Français)" },
+  { code: "German", label: "German (Deutsch)" },
+];
+
 export default function StudyToolsModal({
   notebookId,
   onClose,
@@ -37,6 +47,7 @@ export default function StudyToolsModal({
   onClose: () => void;
 }) {
   const [activeTab, setActiveTab] = useState<"flashcards" | "quiz">("flashcards");
+  const [selectedLanguage, setSelectedLanguage] = useState<string>("English");
 
   // Flashcards state
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
@@ -51,8 +62,7 @@ export default function StudyToolsModal({
 
   const [error, setError] = useState<string | null>(null);
 
-  // Load Flashcards — this only runs once this component is actually mounted,
-  // which the caller (StudioPanel) delays until the user clicks Generate.
+  // Load Flashcards
   useEffect(() => {
     async function loadFlashcards() {
       try {
@@ -61,7 +71,7 @@ export default function StudyToolsModal({
         const res = await fetch("/api/study-tools", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ notebookId, tool: "flashcards" }),
+          body: JSON.stringify({ notebookId, tool: "flashcards", language: selectedLanguage }),
         });
 
         if (!res.ok) {
@@ -79,7 +89,7 @@ export default function StudyToolsModal({
     }
 
     loadFlashcards();
-  }, [notebookId]);
+  }, [notebookId, selectedLanguage]);
 
   // Load Quiz
   useEffect(() => {
@@ -89,12 +99,13 @@ export default function StudyToolsModal({
         const res = await fetch("/api/study-tools", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ notebookId, tool: "quiz" }),
+          body: JSON.stringify({ notebookId, tool: "quiz", language: selectedLanguage }),
         });
 
         if (res.ok) {
           const data = await res.json();
           setQuizQuestions(data.questions || []);
+          setUserAnswers({});
         }
       } catch (err) {
         console.error("Failed to load quiz:", err);
@@ -104,7 +115,7 @@ export default function StudyToolsModal({
     }
 
     loadQuiz();
-  }, [notebookId]);
+  }, [notebookId, selectedLanguage]);
 
   const currentCard = flashcards[currentCardIndex];
 
@@ -138,7 +149,7 @@ export default function StudyToolsModal({
               Study Tools
             </h2>
             <p className="text-[11px] text-neutral-500">
-              Generated from your notebook's sources
+              Interactive flashcards & quizzes in your language
             </p>
           </div>
         </div>
@@ -152,33 +163,52 @@ export default function StudyToolsModal({
         </button>
       </div>
 
-      {/* Tab Navigation */}
-      <div className="flex border-b border-rule text-xs font-medium gap-4">
-        <button
-          type="button"
-          onClick={() => setActiveTab("flashcards")}
-          className={`flex items-center gap-2 pb-3 border-b-2 transition cursor-pointer ${
-            activeTab === "flashcards"
-              ? "border-accent text-accent"
-              : "border-transparent text-neutral-500 hover:text-ink"
-          }`}
-        >
-          <Layers className="w-4 h-4" />
-          <span>Flashcards ({flashcards.length})</span>
-        </button>
+      {/* Language Selector & Tab Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-rule pb-3 text-xs">
+        {/* Tab Navigation */}
+        <div className="flex gap-4 font-medium">
+          <button
+            type="button"
+            onClick={() => setActiveTab("flashcards")}
+            className={`flex items-center gap-2 pb-1 border-b-2 transition cursor-pointer ${
+              activeTab === "flashcards"
+                ? "border-accent text-accent font-semibold"
+                : "border-transparent text-neutral-500 hover:text-ink"
+            }`}
+          >
+            <Layers className="w-4 h-4" />
+            <span>Flashcards ({flashcards.length})</span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab("quiz")}
-          className={`flex items-center gap-2 pb-3 border-b-2 transition cursor-pointer ${
-            activeTab === "quiz"
-              ? "border-accent text-accent"
-              : "border-transparent text-neutral-500 hover:text-ink"
-          }`}
-        >
-          <HelpCircle className="w-4 h-4" />
-          <span>Quiz ({quizQuestions.length})</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("quiz")}
+            className={`flex items-center gap-2 pb-1 border-b-2 transition cursor-pointer ${
+              activeTab === "quiz"
+                ? "border-accent text-accent font-semibold"
+                : "border-transparent text-neutral-500 hover:text-ink"
+            }`}
+          >
+            <HelpCircle className="w-4 h-4" />
+            <span>Quiz ({quizQuestions.length})</span>
+          </button>
+        </div>
+
+        {/* Target Language Dropdown */}
+        <div className="flex items-center gap-1.5 bg-surface border border-rule px-2.5 py-1 rounded-xl shadow-2xs">
+          <Languages className="w-3.5 h-3.5 text-accent shrink-0" />
+          <select
+            value={selectedLanguage}
+            onChange={(e) => setSelectedLanguage(e.target.value)}
+            className="text-xs bg-transparent text-ink font-semibold outline-none cursor-pointer"
+          >
+            {SUPPORTED_LANGUAGES.map((lang) => (
+              <option key={lang.code} value={lang.code}>
+                {lang.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {error && (
@@ -192,7 +222,9 @@ export default function StudyToolsModal({
         <div className="flex-1 flex flex-col items-center justify-between space-y-5">
           {isLoadingFlashcards ? (
             <div className="w-full space-y-5" aria-label="Generating flashcards">
-              <div className="w-full h-64 rounded-3xl bg-rule animate-pulse" />
+              <div className="w-full h-64 rounded-3xl bg-rule animate-pulse flex items-center justify-center text-xs text-neutral-500 font-medium">
+                Generating Flashcards in {selectedLanguage}...
+              </div>
               <div className="flex items-center justify-between w-full pt-1">
                 <div className="h-9 w-24 rounded-xl bg-rule animate-pulse" />
                 <div className="h-4 w-16 rounded bg-rule animate-pulse" />
@@ -206,7 +238,7 @@ export default function StudyToolsModal({
             </div>
           ) : (
             <>
-              {/* 3D Flip Card Container — the interaction itself is kept exactly as-is */}
+              {/* 3D Flip Card Container */}
               <div
                 onClick={() => setIsFlipped(!isFlipped)}
                 className="w-full h-64 cursor-pointer perspective-1000 group select-none"
@@ -256,7 +288,7 @@ export default function StudyToolsModal({
                     </div>
 
                     <div className="text-center text-[10px] text-found font-mono">
-                      Grounded in your sources
+                      Grounded in your sources ({selectedLanguage})
                     </div>
                   </div>
                 </div>
@@ -296,7 +328,9 @@ export default function StudyToolsModal({
         <div className="flex-1 space-y-5">
           {isLoadingQuiz ? (
             <div className="space-y-4" aria-label="Generating quiz">
-              <div className="h-11 w-full rounded-xl bg-rule animate-pulse" />
+              <div className="h-11 w-full rounded-xl bg-rule animate-pulse flex items-center justify-center text-xs text-neutral-500 font-medium">
+                Generating Quiz in {selectedLanguage}...
+              </div>
               {[0, 1, 2].map((i) => (
                 <div key={i} className="p-4 rounded-xl bg-vessel/80 border border-rule space-y-3">
                   <div className="h-4 w-3/4 rounded bg-rule animate-pulse" />
@@ -316,7 +350,7 @@ export default function StudyToolsModal({
             <>
               {/* Score Tracker */}
               <div className="flex items-center justify-between p-3.5 bg-vessel rounded-xl border border-rule text-xs">
-                <span className="font-semibold text-ink">Progress</span>
+                <span className="font-semibold text-ink">Progress ({selectedLanguage})</span>
                 <span className="font-mono text-xs text-accent font-bold">
                   {Object.keys(userAnswers).length}/{quizQuestions.length} · {quizScore}/{quizQuestions.length}
                 </span>
@@ -343,8 +377,6 @@ export default function StudyToolsModal({
                       )}
                     </div>
 
-                    {/* Answer Options — single column: this panel is too narrow
-                        for a 2-up grid regardless of viewport width */}
                     <div className="grid grid-cols-1 gap-2">
                       {q.options.map((opt, optIndex) => {
                         let optStyle = "bg-surface border-rule text-ink hover:border-accent";

@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
 
-    const { notebookId, tool } = await req.json();
+    const { notebookId, tool, language = "English" } = await req.json();
 
     if (!notebookId || !tool) {
       return NextResponse.json(
@@ -82,11 +82,17 @@ export async function POST(req: NextRequest) {
       .join("\n\n")
       .slice(0, 25000);
 
+    const langInstruction =
+      language === "Hinglish"
+        ? "Generate ALL text strictly in Hinglish (Hindi language typed in Roman/Latin alphabet, e.g. 'Aapko yeh concept yaad rakhna chahiye')."
+        : `Generate ALL text strictly in ${language}.`;
+
     if (tool === "flashcards") {
       const { object } = await generateObject({
         model: openai("gpt-4o-mini"),
         schema: FlashcardsSchema,
         prompt: `You are an expert educational tutor. Generate a set of 10 interactive study flashcards based on the following notebook source materials.
+IMPORTANT LANGUAGE DIRECTIVE: ${langInstruction}
 
 Source Text:
 ${combinedText}`,
@@ -98,6 +104,7 @@ ${combinedText}`,
         model: openai("gpt-4o-mini"),
         schema: QuizSchema,
         prompt: `You are an expert test creator. Generate a 6-question multiple choice quiz based on the following notebook source materials. Ensure each question has 4 options, a 0-based correct index, and a clear explanation.
+IMPORTANT LANGUAGE DIRECTIVE: ${langInstruction}
 
 Source Text:
 ${combinedText}`,
