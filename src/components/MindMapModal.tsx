@@ -15,6 +15,9 @@ import {
   ChevronRight,
   ChevronDown,
   Info,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
 } from "lucide-react";
 import mermaid from "mermaid";
 
@@ -78,9 +81,10 @@ export default function MindMapModal({
   const [data, setData] = useState<MindMapData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"visual" | "mermaid">("visual");
+  const [activeTab, setActiveTab] = useState<"visual" | "mermaid">("mermaid");
   const [copied, setCopied] = useState(false);
   const [selectedNode, setSelectedNode] = useState<TreeMindMapNode | null>(null);
+  const [zoomScale, setZoomScale] = useState(1);
   const mermaidRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -89,6 +93,7 @@ export default function MindMapModal({
       theme: "neutral",
       securityLevel: "loose",
       fontFamily: "Inter, sans-serif",
+      flowchart: { useMaxWidth: false, htmlLabels: true, curve: "basis" },
     });
   }, []);
 
@@ -138,6 +143,12 @@ export default function MindMapModal({
       mermaid.render(renderId, data.mermaidCode).then(({ svg }) => {
         if (isMounted && mermaidRef.current) {
           mermaidRef.current.innerHTML = svg;
+          const svgEl = mermaidRef.current.querySelector("svg");
+          if (svgEl) {
+            svgEl.style.minWidth = "800px";
+            svgEl.style.width = "100%";
+            svgEl.style.height = "auto";
+          }
         }
       }).catch((e) => {
         console.error("Mermaid render error:", e);
@@ -172,10 +183,10 @@ export default function MindMapModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-      <div className="bg-white rounded-3xl max-w-4xl w-full p-6 sm:p-8 shadow-2xl border border-[#E2E7EA] text-[#141A22] flex flex-col max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-3 sm:p-6 animate-in fade-in duration-150">
+      <div className="bg-white rounded-3xl max-w-6xl w-full h-[92vh] p-4 sm:p-6 shadow-2xl border border-[#E2E7EA] text-[#141A22] flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-[#E2E7EA] pb-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E2E7EA] pb-3">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-[#3B4CC0]/10 border border-[#3B4CC0]/20 text-[#3B4CC0]">
               <GitFork className="w-5 h-5 animate-pulse" />
@@ -185,7 +196,7 @@ export default function MindMapModal({
                 {data?.title || "AI Knowledge Graph & Mind Map"}
               </h2>
               <p className="text-[11px] text-neutral-500">
-                Interactive conceptual hierarchy generated from ingested sources
+                Studio AI Diagram — Conceptual hierarchy generated from ingested sources
               </p>
             </div>
           </div>
@@ -197,18 +208,6 @@ export default function MindMapModal({
                 <div className="flex bg-[#F5F7F8] p-0.5 rounded-full border border-[#E2E7EA] text-xs font-medium">
                   <button
                     type="button"
-                    onClick={() => setActiveTab("visual")}
-                    className={`px-3 py-1.5 rounded-full transition cursor-pointer flex items-center gap-1.5 ${
-                      activeTab === "visual"
-                        ? "bg-white text-[#141A22] font-semibold shadow-xs"
-                        : "text-neutral-500 hover:text-[#141A22]"
-                    }`}
-                  >
-                    <Layers className="w-3.5 h-3.5" />
-                    <span>Visual Tree</span>
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => setActiveTab("mermaid")}
                     className={`px-3 py-1.5 rounded-full transition cursor-pointer flex items-center gap-1.5 ${
                       activeTab === "mermaid"
@@ -217,9 +216,54 @@ export default function MindMapModal({
                     }`}
                   >
                     <Code className="w-3.5 h-3.5 text-[#3B4CC0]" />
-                    <span>Mermaid</span>
+                    <span>Diagram View</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("visual")}
+                    className={`px-3 py-1.5 rounded-full transition cursor-pointer flex items-center gap-1.5 ${
+                      activeTab === "visual"
+                        ? "bg-white text-[#141A22] font-semibold shadow-xs"
+                        : "text-neutral-500 hover:text-[#141A22]"
+                    }`}
+                  >
+                    <Layers className="w-3.5 h-3.5" />
+                    <span>Tree View</span>
                   </button>
                 </div>
+
+                {/* Diagram Zoom Controls */}
+                {activeTab === "mermaid" && (
+                  <div className="flex items-center bg-[#F5F7F8] border border-[#E2E7EA] rounded-full p-0.5 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setZoomScale((z) => Math.max(0.6, z - 0.2))}
+                      title="Zoom Out"
+                      className="p-1.5 text-neutral-600 hover:text-[#141A22] rounded-full hover:bg-white transition cursor-pointer"
+                    >
+                      <ZoomOut className="w-3.5 h-3.5" />
+                    </button>
+                    <span className="font-mono text-[10px] font-semibold px-2">
+                      {Math.round(zoomScale * 100)}%
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setZoomScale((z) => Math.min(2.5, z + 0.2))}
+                      title="Zoom In"
+                      className="p-1.5 text-neutral-600 hover:text-[#141A22] rounded-full hover:bg-white transition cursor-pointer"
+                    >
+                      <ZoomIn className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setZoomScale(1)}
+                      title="Reset Zoom"
+                      className="p-1.5 text-neutral-400 hover:text-[#141A22] rounded-full hover:bg-white transition cursor-pointer border-l border-[#E2E7EA]"
+                    >
+                      <Maximize2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
 
                 <button
                   type="button"
@@ -261,12 +305,12 @@ export default function MindMapModal({
         </div>
 
         {/* Body Content */}
-        <div className="flex-1 my-4 overflow-hidden bg-[#F5F7F8] rounded-3xl border border-[#E2E7EA] relative flex">
+        <div className="flex-1 my-3 overflow-hidden bg-[#F5F7F8] rounded-3xl border border-[#E2E7EA] relative flex">
           {isLoading ? (
             <div className="w-full flex flex-col items-center justify-center p-12 text-center space-y-3">
               <Loader2 className="w-8 h-8 animate-spin text-[#3B4CC0]" />
               <p className="text-xs font-semibold text-[#141A22]">
-                Synthesizing Concept Mind Map & Graph...
+                Synthesizing Large High-Res Mind Map & Diagram...
               </p>
               <p className="text-[11px] text-neutral-400 max-w-xs">
                 Extracting core topics, technical terms, and structural relationships from your sources.
@@ -287,7 +331,7 @@ export default function MindMapModal({
           ) : activeTab === "visual" && rootTree ? (
             <div className="flex-1 grid grid-cols-1 md:grid-cols-3 overflow-hidden">
               {/* Interactive Tree View */}
-              <div className="md:col-span-2 p-4 overflow-y-auto space-y-3 border-r border-[#E2E7EA]">
+              <div className="md:col-span-2 p-5 overflow-y-auto space-y-3 border-r border-[#E2E7EA] bg-white">
                 <div className="text-[10px] font-mono font-semibold uppercase text-neutral-400 tracking-wider">
                   Interactive Node Hierarchy (Click node to inspect)
                 </div>
@@ -301,20 +345,20 @@ export default function MindMapModal({
               </div>
 
               {/* Node Details Inspector Sidebar */}
-              <div className="p-4 bg-white overflow-y-auto space-y-4">
+              <div className="p-5 bg-[#F5F7F8] overflow-y-auto space-y-4">
                 {selectedNode ? (
                   <div className="space-y-3">
                     <div className="space-y-1">
                       <span className="text-[10px] font-mono font-semibold text-[#3B4CC0] bg-[#3B4CC0]/10 px-2 py-0.5 rounded border border-[#3B4CC0]/20">
                         {selectedNode.category || "Topic Node"}
                       </span>
-                      <h4 className="text-base font-serif-display font-normal text-[#141A22] pt-1">
+                      <h4 className="text-lg font-serif-display font-normal text-[#141A22] pt-1">
                         {selectedNode.label}
                       </h4>
                     </div>
 
                     {selectedNode.description && (
-                      <div className="p-3 bg-[#F5F7F8] rounded-2xl border border-[#E2E7EA] text-xs text-neutral-600 leading-relaxed">
+                      <div className="p-4 bg-white rounded-2xl border border-[#E2E7EA] text-xs text-neutral-600 leading-relaxed shadow-2xs">
                         {selectedNode.description}
                       </div>
                     )}
@@ -348,8 +392,13 @@ export default function MindMapModal({
               </div>
             </div>
           ) : (
-            <div className="flex-1 p-6 overflow-auto bg-white flex items-center justify-center">
-              <div ref={mermaidRef} className="max-w-full overflow-x-auto flex justify-center" />
+            /* High-Res Zoomable Mermaid Diagram View */
+            <div className="flex-1 p-6 overflow-auto bg-white flex items-center justify-center relative">
+              <div
+                ref={mermaidRef}
+                style={{ transform: `scale(${zoomScale})`, transformOrigin: "center center" }}
+                className="transition-transform duration-200 min-w-full flex items-center justify-center p-6"
+              />
             </div>
           )}
         </div>
@@ -374,7 +423,7 @@ function TreeNodeItem({
   const hasChildren = node.children && node.children.length > 0;
 
   return (
-    <div className="space-y-1" style={{ paddingLeft: depth * 16 }}>
+    <div className="space-y-1" style={{ paddingLeft: depth * 18 }}>
       <div
         onClick={() => onSelectNode(node)}
         className={`p-3 rounded-2xl border transition cursor-pointer flex items-center justify-between group ${

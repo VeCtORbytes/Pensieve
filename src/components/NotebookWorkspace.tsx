@@ -15,6 +15,31 @@ export default function NotebookWorkspace({
 }) {
   const [railOpen, setRailOpen] = useState(false);
   const [studioOpen, setStudioOpen] = useState(false);
+  const [studioWidth, setStudioWidth] = useState(360);
+  const [isResizing, setIsResizing] = useState(false);
+
+  // Global mouse move & up listener for dragging Studio panel width
+  useEffect(() => {
+    if (!isResizing) return;
+
+    function handleMouseMove(e: MouseEvent) {
+      const newWidth = window.innerWidth - e.clientX;
+      if (newWidth >= 280 && newWidth <= 750) {
+        setStudioWidth(newWidth);
+      }
+    }
+
+    function handleMouseUp() {
+      setIsResizing(false);
+    }
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isResizing]);
 
   useEffect(() => {
     if (!railOpen && !studioOpen) return;
@@ -28,7 +53,7 @@ export default function NotebookWorkspace({
   }, [railOpen, studioOpen]);
 
   return (
-    <div className="flex flex-1 overflow-hidden bg-vessel text-ink">
+    <div className="flex flex-1 overflow-hidden bg-vessel text-ink select-none">
       {/* Sources rail — persistent from md up */}
       <aside className="hidden md:flex md:w-[260px] lg:w-[300px] shrink-0 flex-col overflow-hidden border-r border-rule bg-vessel">
         <SourcePanel notebookId={notebookId} />
@@ -76,8 +101,20 @@ export default function NotebookWorkspace({
         />
       </section>
 
-      {/* Studio rail — persistent from lg up */}
-      <aside className="hidden lg:flex lg:w-[320px] xl:w-[360px] shrink-0 flex-col overflow-hidden border-l border-rule bg-vessel">
+      {/* Draggable Resize Handle */}
+      <div
+        onMouseDown={() => setIsResizing(true)}
+        className="hidden lg:block w-1.5 hover:w-2 bg-transparent hover:bg-accent/40 active:bg-accent cursor-col-resize transition-all shrink-0 z-20 relative"
+        title="Drag to adjust Studio panel width"
+      >
+        <div className="absolute top-1/2 -translate-y-1/2 left-0.5 w-0.5 h-8 bg-neutral-300 rounded-full" />
+      </div>
+
+      {/* Studio rail — persistent from lg up with dynamic draggable width */}
+      <aside
+        style={{ width: `${studioWidth}px` }}
+        className="hidden lg:flex shrink-0 flex-col overflow-hidden border-l border-rule bg-vessel transition-none"
+      >
         <StudioPanel notebookId={notebookId} />
       </aside>
 
