@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { PrismaClient } from "@prisma/client";
+
+function getNoteClient() {
+  return (db as any).note || new PrismaClient().note;
+}
 
 export async function PUT(
   req: NextRequest,
@@ -9,7 +14,8 @@ export async function PUT(
     const { id } = await params;
     const { title, content } = await req.json();
 
-    const note = await db.note.update({
+    const noteClient = getNoteClient();
+    const note = await noteClient.update({
       where: { id },
       data: {
         ...(title !== undefined && { title: title.trim() || "Untitled Note" }),
@@ -30,7 +36,8 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    await db.note.delete({ where: { id } });
+    const noteClient = getNoteClient();
+    await noteClient.delete({ where: { id } });
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
