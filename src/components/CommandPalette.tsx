@@ -1,7 +1,21 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, FileText, File, Link2, Video, Upload, X, ArrowRight } from "lucide-react";
+import {
+  Search,
+  FileText,
+  File,
+  Link2,
+  Video,
+  Upload,
+  X,
+  ArrowRight,
+  StickyNote,
+  Volume2,
+  GitFork,
+  Layers,
+  Sparkles,
+} from "lucide-react";
 
 interface CommandPaletteProps {
   notebookId: string;
@@ -9,6 +23,7 @@ interface CommandPaletteProps {
   onClose: () => void;
   onSelectSource?: (source: any) => void;
   onSelectPrompt?: (prompt: string) => void;
+  onActionSelect?: (action: string) => void;
 }
 
 export default function CommandPalette({
@@ -17,15 +32,24 @@ export default function CommandPalette({
   onClose,
   onSelectSource,
   onSelectPrompt,
+  onActionSelect,
 }: CommandPaletteProps) {
   const [query, setQuery] = useState("");
   const [sources, setSources] = useState<any[]>([]);
+  const [notes, setNotes] = useState<any[]>([]);
 
   useEffect(() => {
     if (isOpen) {
+      // Fetch sources
       fetch(`/api/sources?notebookId=${notebookId}`)
         .then((res) => res.json())
         .then((data) => setSources(data || []))
+        .catch(console.error);
+
+      // Fetch saved notes
+      fetch(`/api/notes?notebookId=${notebookId}`)
+        .then((res) => res.json())
+        .then((data) => setNotes(data.notes || []))
         .catch(console.error);
     }
   }, [isOpen, notebookId]);
@@ -57,6 +81,20 @@ export default function CommandPalette({
       s.type.toLowerCase().includes(query.toLowerCase())
   );
 
+  const filteredNotes = notes.filter(
+    (n) =>
+      n.title.toLowerCase().includes(query.toLowerCase()) ||
+      n.content.toLowerCase().includes(query.toLowerCase())
+  );
+
+  const quickActions = [
+    { id: "audio", label: "Open Audio Podcast Studio", icon: Volume2 },
+    { id: "notes", label: "Open Notes & Scratchpad", icon: StickyNote },
+    { id: "briefing", label: "Generate Executive Briefing", icon: FileText },
+    { id: "flashcards", label: "Open Flashcards & Quiz Deck", icon: Layers },
+    { id: "mindmap", label: "Generate Mind Map & Diagram", icon: GitFork },
+  ].filter((a) => a.label.toLowerCase().includes(query.toLowerCase()));
+
   const starterPrompts = [
     "Summarize the key takeaways from my sources.",
     "What are the main arguments or topics presented?",
@@ -79,7 +117,7 @@ export default function CommandPalette({
           <input
             autoFocus
             type="text"
-            placeholder="Search sources or select starter prompt (ESC to close)..."
+            placeholder="Search sources, saved notes, or studio actions (ESC to close)..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="w-full px-3 py-3.5 text-xs bg-transparent border-0 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 text-ink placeholder-neutral-400 font-sans shadow-none"
@@ -94,7 +132,58 @@ export default function CommandPalette({
         </div>
 
         {/* Results List */}
-        <div className="max-h-80 overflow-y-auto p-3 space-y-3">
+        <div className="max-h-96 overflow-y-auto p-3 space-y-4">
+          {/* Quick Actions */}
+          {quickActions.length > 0 && (
+            <div className="space-y-1">
+              <div className="px-3 py-1 text-[10px] uppercase font-semibold text-neutral-400 tracking-wider flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-amber-500" />
+                Studio Quick Actions
+              </div>
+              {quickActions.map((act) => {
+                const IconComp = act.icon;
+                return (
+                  <button
+                    key={act.id}
+                    type="button"
+                    onClick={() => {
+                      if (onActionSelect) onActionSelect(act.id);
+                      onClose();
+                    }}
+                    className="w-full text-left p-3 rounded-2xl hover:bg-vessel border border-transparent hover:border-rule flex items-center justify-between text-xs transition cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <IconComp className="w-4 h-4 text-accent shrink-0" />
+                      <span className="font-semibold text-ink group-hover:text-accent transition">
+                        {act.label}
+                      </span>
+                    </div>
+                    <ArrowRight className="w-3.5 h-3.5 text-neutral-400 group-hover:text-accent transition" />
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Saved Notes Section */}
+          {filteredNotes.length > 0 && (
+            <div className="space-y-1">
+              <div className="px-3 py-1 text-[10px] uppercase font-semibold text-neutral-400 tracking-wider flex items-center gap-1">
+                <StickyNote className="w-3 h-3 text-amber-500" />
+                Saved Notes ({filteredNotes.length})
+              </div>
+              {filteredNotes.map((n) => (
+                <div
+                  key={n.id}
+                  className="p-3 rounded-2xl bg-vessel/60 hover:bg-vessel border border-transparent hover:border-rule text-xs space-y-1"
+                >
+                  <div className="font-semibold text-ink">{n.title}</div>
+                  <p className="text-[11px] text-neutral-500 line-clamp-1">{n.content}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Sources Section */}
           {filteredSources.length > 0 && (
             <div className="space-y-1">
@@ -150,9 +239,9 @@ export default function CommandPalette({
             </div>
           )}
 
-          {filteredSources.length === 0 && starterPrompts.length === 0 && (
+          {filteredSources.length === 0 && filteredNotes.length === 0 && starterPrompts.length === 0 && (
             <div className="py-8 text-center text-xs text-neutral-400">
-              No matching sources or prompts found for "{query}".
+              No matching sources, notes, or prompts found for "{query}".
             </div>
           )}
         </div>

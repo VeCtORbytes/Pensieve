@@ -10,9 +10,27 @@ const openaiClient = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+export type VoicePersona = "casual" | "academic" | "eli5" | "debate";
+export type VoiceName = "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer";
+
+const personaPrompts: Record<VoicePersona, string> = {
+  casual:
+    "You are a friendly, upbeat podcast host. Synthesize an engaging, conversational 2-paragraph audio podcast overview of the key findings. Use warm, clear language.",
+  academic:
+    "You are a distinguished research scholar. Synthesize an analytical, rigorous 2-paragraph executive academic briefing highlighting methodology, findings, and technical takeaways.",
+  eli5:
+    "You are a brilliant teacher explaining concepts to a beginner. Synthesize a crystal-clear 2-paragraph overview using fun analogies, zero jargon, and simple language.",
+  debate:
+    "You are a sharp investigative analyst. Synthesize a thought-provoking 2-paragraph podcast overview highlighting key arguments, tradeoffs, counter-perspectives, and open questions.",
+};
+
 export async function POST(req: NextRequest) {
   try {
-    const { notebookId } = await req.json();
+    const {
+      notebookId,
+      persona = "casual",
+      voice = "alloy",
+    }: { notebookId: string; persona?: VoicePersona; voice?: VoiceName } = await req.json();
 
     if (!notebookId) {
       return NextResponse.json({ error: "notebookId parameter is required" }, { status: 400 });
@@ -40,14 +58,15 @@ export async function POST(req: NextRequest) {
       .map((s) => `[Source: ${s.title}]\n${(s.rawText || "").slice(0, 3000)}`)
       .join("\n\n");
 
+    const systemPrompt = personaPrompts[persona] || personaPrompts.casual;
+
     // 2. Generate a conversational podcast-style summary script
     const scriptCompletion = await openaiClient.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
-          content:
-            "You are an expert audio producer. Generate a natural, engaging 2-paragraph conversational audio podcast script summarizing the key insights, findings, and takeaways from the provided research sources. Keep it under 200 words.",
+          content: `${systemPrompt} Break the script into distinct paragraph segments. Keep total length under 250 words.`,
         },
         {
           role: "user",
@@ -56,12 +75,23 @@ export async function POST(req: NextRequest) {
       ],
     });
 
-    const scriptText = scriptCompletion.choices[0]?.message?.content || "Here is a brief audio overview of your notebook sources.";
+    const scriptText =
+      scriptCompletion.choices[0]?.message?.content ||
+      "Here is a brief audio overview of your notebook sources.";
 
-    // 3. Synthesize MP3 Audio using OpenAI TTS API (tts-1, alloy)
+    // Split script into paragraphs for synchronized transcript highlighting
+    const segments = scriptText
+      .split("\n\n")
+      .map((p) => p.trim())
+      .filter(Boolean);
+
+    // 3. Synthesize MP3 Audio using OpenAI TTS API (tts-1, selected voice)
+    const validVoices: VoiceName[] = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"];
+    const chosenVoice = validVoices.includes(voice as VoiceName) ? (voice as VoiceName) : "alloy";
+
     const mp3Response = await openaiClient.audio.speech.create({
       model: "tts-1",
-      voice: "alloy",
+      voice: chosenVoice,
       input: scriptText,
     });
 
@@ -72,7 +102,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       scriptText,
+      segments,
       audioUrl,
+      persona,
+      voice: chosenVoice,
     });
   } catch (error: any) {
     console.error("Audio Summary API error:", error);
