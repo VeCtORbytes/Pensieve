@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
-import { ArrowLeft, Trash2, Volume2, Search, Loader2, Sparkles } from "lucide-react";
+import { ArrowLeft, Trash2, Volume2, Search, Loader2, Sparkles, Layers } from "lucide-react";
 import { renameNotebook, deleteNotebook } from "@/app/actions/notebooks";
 import AudioPlayer from "@/components/AudioPlayer";
 import CommandPalette from "@/components/CommandPalette";
 import SourceViewerModal from "@/components/SourceViewerModal";
 import AuthControls from "@/components/AuthControls";
 import StudyToolsModal from "@/components/StudyToolsModal";
+import IngestionPipelineVisualizer from "@/components/IngestionPipelineVisualizer";
 
 export default function NotebookHeader({
   id,
@@ -30,6 +31,9 @@ export default function NotebookHeader({
 
   // Study Tools state
   const [isStudyToolsOpen, setIsStudyToolsOpen] = useState(false);
+
+  // Visualizer State
+  const [isVisualizerOpen, setIsVisualizerOpen] = useState(false);
 
   // Robust capture-phase Command+K / Ctrl+K keyboard shortcut listener
   useEffect(() => {
@@ -116,6 +120,17 @@ export default function NotebookHeader({
           )}
         </div>
 
+        {/* Pipeline Architecture Visualizer Button */}
+        <button
+          type="button"
+          onClick={() => setIsVisualizerOpen(true)}
+          aria-label="Open RAG Pipeline Visualizer"
+          className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl bg-[#3B4CC0]/10 hover:bg-[#3B4CC0]/20 border border-[#3B4CC0]/30 px-3 py-1.5 text-xs font-semibold text-[#3B4CC0] transition shadow-2xs"
+        >
+          <Layers className="h-3.5 w-3.5 text-[#3B4CC0] animate-pulse" />
+          <span className="hidden md:inline">RAG Visualizer</span>
+        </button>
+
         {/* Command Palette Trigger */}
         <button
           type="button"
@@ -173,6 +188,13 @@ export default function NotebookHeader({
         {/* Auth Controls */}
         <AuthControls />
       </header>
+
+      {/* RAG Pipeline Visualizer Modal */}
+      {isVisualizerOpen && (
+        <IngestionPipelineVisualizer
+          onClose={() => setIsVisualizerOpen(false)}
+        />
+      )}
 
       {/* Study Tools Modal */}
       {isStudyToolsOpen && (
