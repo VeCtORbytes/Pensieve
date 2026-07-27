@@ -18,7 +18,7 @@ export default function StudioPanel({ notebookId }: { notebookId: string }) {
   const [mindMapOpen, setMindMapOpen] = useState(false);
 
   // Executive Briefing & Study Guide states
-  const [isBriefingLoading, setIsBriefingLoading] = useState(false);
+  const [loadingFormat, setLoadingFormat] = useState<"briefing" | "study-guide" | null>(null);
   const [briefingData, setBriefingData] = useState<{ title: string; markdown: string } | null>(null);
 
   async function handleGenerateAudioOverview() {
@@ -47,7 +47,7 @@ export default function StudioPanel({ notebookId }: { notebookId: string }) {
 
   async function handleGenerateBriefing(format: "briefing" | "study-guide") {
     try {
-      setIsBriefingLoading(true);
+      setLoadingFormat(format);
       const res = await fetch("/api/export-briefing", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -65,7 +65,7 @@ export default function StudioPanel({ notebookId }: { notebookId: string }) {
     } catch (err: any) {
       alert("Briefing generation error: " + (err.message || "Failed"));
     } finally {
-      setIsBriefingLoading(false);
+      setLoadingFormat(null);
     }
   }
 
@@ -89,7 +89,7 @@ export default function StudioPanel({ notebookId }: { notebookId: string }) {
               />
             </div>
           ) : (
-            <div className="p-4 flex items-center justify-between gap-3">
+            <div className="p-[#14] p-4 flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-2.5">
                 <Volume2 className="h-4 w-4 shrink-0 text-secondary" />
                 <div className="min-w-0">
@@ -130,19 +130,28 @@ export default function StudioPanel({ notebookId }: { notebookId: string }) {
             <div className="grid grid-cols-2 gap-2 pt-1">
               <button
                 type="button"
-                disabled={isBriefingLoading}
+                disabled={loadingFormat !== null}
                 onClick={() => handleGenerateBriefing("briefing")}
                 className="w-full flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-ink hover:bg-accent text-white text-[11px] font-semibold transition disabled:opacity-50 cursor-pointer"
               >
-                {isBriefingLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : "Briefing Doc"}
+                {loadingFormat === "briefing" ? (
+                  <Loader2 className="w-3 h-3 animate-spin text-white" />
+                ) : (
+                  "Briefing Doc"
+                )}
               </button>
+
               <button
                 type="button"
-                disabled={isBriefingLoading}
+                disabled={loadingFormat !== null}
                 onClick={() => handleGenerateBriefing("study-guide")}
                 className="w-full flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-white border border-rule hover:border-accent text-ink text-[11px] font-semibold transition disabled:opacity-50 cursor-pointer shadow-2xs"
               >
-                {isBriefingLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : "Study Guide"}
+                {loadingFormat === "study-guide" ? (
+                  <Loader2 className="w-3 h-3 animate-spin text-accent" />
+                ) : (
+                  "Study Guide"
+                )}
               </button>
             </div>
           </div>
