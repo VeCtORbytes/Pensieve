@@ -8,6 +8,7 @@ import DeleteNotebookButton from "@/components/DeleteNotebookButton";
 import PensieveLogo from "@/components/PensieveLogo";
 import SocialLinks from "@/components/SocialLinks";
 import CartoonGuideTour from "@/components/CartoonGuideTour";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export const dynamic = "force-dynamic";
 
@@ -25,9 +26,9 @@ export default async function HomePage() {
   const totalSources = notebooks.reduce((sum, n) => sum + n._count.sources, 0);
 
   return (
-    <main className="min-h-screen bg-vessel text-ink px-6 py-12 flex flex-col justify-between relative">
+    <main className="min-h-screen bg-vessel text-ink px-6 py-12 flex flex-col justify-between relative transition-colors duration-200">
       <div className="mx-auto max-w-5xl space-y-10 w-full">
-        {/* Navigation Bar with Auth & Social Links */}
+        {/* Navigation Bar with Auth, Social Links & Theme Switcher */}
         <div className="flex items-center justify-between pb-5 border-b border-rule">
           <div className="flex items-center gap-2.5">
             <PensieveLogo className="w-8 h-8" />
@@ -36,8 +37,9 @@ export default async function HomePage() {
             </span>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <SocialLinks />
+            <ThemeToggle />
             <AuthControls />
           </div>
         </div>
@@ -48,106 +50,120 @@ export default async function HomePage() {
             <h1 className="font-serif-display text-4xl sm:text-5xl font-normal tracking-tight text-ink">
               Notebooks
             </h1>
-
-            <p className="text-xs text-neutral-500 max-w-lg leading-relaxed">
-              Upload PDFs, articles, YouTube videos, and transcripts. Get
-              answers grounded in exact page and timestamp citations.
+            <p className="text-neutral-500 text-sm max-w-md leading-relaxed">
+              Synthesize, query, and transform research documents into grounded intelligence.
             </p>
-
-            {/* Metrics Pills */}
-            <div className="flex items-center gap-4 pt-1 text-xs">
-              <div className="flex items-center gap-1.5 text-ink bg-surface px-3 py-1.5 rounded-xl border border-rule shadow-xs">
-                <Layers className="w-3.5 h-3.5 text-accent" />
-                <span>
-                  <span className="font-mono">{notebooks.length}</span> Notebooks
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5 text-ink bg-surface px-3 py-1.5 rounded-xl border border-rule shadow-xs">
-                <Database className="w-3.5 h-3.5 text-found" />
-                <span>
-                  <span className="font-mono">{totalSources}</span> Sources
-                </span>
-              </div>
-            </div>
           </div>
 
-          {/* New Notebook Form */}
-          <form action={createNotebook} className="bg-surface p-5 rounded-2xl border border-rule shadow-md space-y-3.5 shrink-0 sm:w-80 relative">
-            <div className="text-xs font-semibold text-ink">
-              New notebook
+          {/* Quick Metrics Bar */}
+          <div className="flex items-center gap-6 p-4 rounded-2xl bg-white dark:bg-[#1E293B] border border-rule shadow-2xs">
+            <div className="space-y-0.5">
+              <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider block">
+                Notebooks
+              </span>
+              <span className="font-mono text-xl font-bold text-ink">
+                {notebooks.length}
+              </span>
             </div>
-            <input
-              type="text"
-              name="title"
-              placeholder="e.g. Quantum Computing Research"
-              className="w-full px-3.5 py-2.5 text-xs bg-vessel border border-rule rounded-xl outline-none focus:ring-2 focus:ring-accent focus:bg-surface text-ink placeholder:text-neutral-400 transition"
-            />
-            <button
-              type="submit"
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-ink hover:bg-accent py-2.5 text-xs font-semibold text-white shadow-sm transition cursor-pointer"
-            >
-              <Plus className="h-4 w-4" />
-              Create notebook
-            </button>
-          </form>
+            <div className="w-px h-8 bg-rule" />
+            <div className="space-y-0.5">
+              <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider block">
+                Total Sources
+              </span>
+              <span className="font-mono text-xl font-bold text-accent">
+                {totalSources}
+              </span>
+            </div>
+          </div>
         </div>
 
-        {/* Notebook Grid */}
-        {notebooks.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-rule bg-surface p-16 text-center space-y-4 shadow-xs">
-            <BookOpen className="mx-auto h-12 w-12 text-neutral-300" />
-            <div>
-              <p className="text-base font-semibold text-ink">No notebooks yet</p>
-              <p className="text-xs text-neutral-400 mt-1 max-w-sm mx-auto">
-                Create a notebook above to add your first source.
+        {/* New Notebook Creator */}
+        <form
+          action={createNotebook}
+          className="flex items-center gap-3 p-2 bg-white dark:bg-[#1E293B] rounded-2xl border border-rule focus-within:border-accent focus-within:ring-1 focus-within:ring-accent transition shadow-xs max-w-xl"
+        >
+          <input
+            type="text"
+            name="title"
+            placeholder="Name your new research notebook..."
+            required
+            className="flex-1 bg-transparent px-3 py-2 text-xs text-ink placeholder:text-neutral-400 outline-none"
+          />
+          <button
+            type="submit"
+            className="px-4 py-2.5 rounded-xl bg-ink text-white hover:bg-accent font-semibold text-xs transition cursor-pointer flex items-center gap-2 shrink-0 shadow-xs"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Create Notebook</span>
+          </button>
+        </form>
+
+        {/* Notebooks List */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between text-xs text-neutral-500">
+            <span className="font-semibold uppercase tracking-wider text-[10px]">
+              Recent Workspace Notebooks ({notebooks.length})
+            </span>
+          </div>
+
+          {notebooks.length === 0 ? (
+            <div className="p-12 text-center bg-white dark:bg-[#1E293B] rounded-3xl border border-rule space-y-3">
+              <BookOpen className="w-8 h-8 text-neutral-300 mx-auto" />
+              <p className="text-xs text-neutral-500 font-medium">No notebooks created yet.</p>
+              <p className="text-[11px] text-neutral-400">
+                Type a title above to start your first grounded AI research notebook.
               </p>
             </div>
-          </div>
-        ) : (
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {notebooks.map((n) => (
-              <div
-                key={n.id}
-                className="group relative p-6 rounded-xl bg-surface border border-rule hover:border-accent shadow-xs hover:shadow-md transition-all duration-300 flex flex-col justify-between space-y-4"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-start justify-between gap-2">
-                    <Link
-                      href={`/notebook/${n.id}`}
-                      className="text-base font-semibold text-ink group-hover:text-accent transition truncate flex-1 hover:underline"
-                    >
-                      {n.title}
-                    </Link>
-                    <DeleteNotebookButton notebookId={n.id} />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {notebooks.map((nb) => (
+                <div
+                  key={nb.id}
+                  className="p-5 rounded-2xl bg-white dark:bg-[#1E293B] border border-rule hover:border-accent transition group flex flex-col justify-between space-y-4 shadow-2xs"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <Link
+                        href={`/notebook/${nb.id}`}
+                        className="font-serif-display text-lg font-medium text-ink group-hover:text-accent transition line-clamp-1 flex-1"
+                      >
+                        {nb.title}
+                      </Link>
+                      <DeleteNotebookButton notebookId={nb.id} />
+                    </div>
+                    <p className="text-[11px] text-neutral-400 font-mono">
+                      Updated {new Date(nb.updatedAt).toLocaleDateString()}
+                    </p>
                   </div>
 
-                  <p className="text-[11px] font-mono text-neutral-400">
-                    Updated {new Date(n.updatedAt).toLocaleDateString()}
-                  </p>
-                </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-rule text-xs">
+                    <div className="flex items-center gap-1.5 text-neutral-500 text-[11px] font-medium">
+                      <Layers className="w-3.5 h-3.5 text-accent" />
+                      <span>{nb._count.sources} Sources</span>
+                    </div>
 
-                <div className="pt-3 border-t border-rule flex items-center justify-between text-xs">
-                  <span className="font-mono text-[11px] bg-vessel px-2.5 py-1 rounded-lg text-neutral-700 font-semibold border border-rule">
-                    {n._count.sources} {n._count.sources === 1 ? "source" : "sources"}
-                  </span>
-                  <Link
-                    href={`/notebook/${n.id}`}
-                    className="text-accent font-semibold text-xs flex items-center gap-1 hover:underline cursor-pointer"
-                  >
-                    Open <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
+                    <Link
+                      href={`/notebook/${nb.id}`}
+                      className="flex items-center gap-1 text-[11px] font-semibold text-accent group-hover:translate-x-0.5 transition-transform"
+                    >
+                      <span>Open</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Clean Minimal Footer */}
-      <footer className="mx-auto max-w-5xl w-full pt-16 pb-6 flex items-center justify-center border-t border-rule text-xs text-neutral-500 mt-12">
-        <div className="flex items-center gap-2">
-          <PensieveLogo className="w-5 h-5" />
-          <span>Pensieve AI Studio © 2026</span>
+      {/* Footer */}
+      <footer className="mx-auto max-w-5xl w-full pt-12 border-t border-rule mt-12 flex flex-col sm:flex-row items-center justify-between text-xs text-neutral-400 gap-4">
+        <span>© {new Date().getFullYear()} Pensieve AI · Grounded Multilingual Research Workspace</span>
+        <div className="flex items-center gap-4 text-[11px]">
+          <span>OpenAI RAG + Qdrant</span>
+          <span>·</span>
+          <span>Next.js App Router</span>
         </div>
       </footer>
 

@@ -12,6 +12,7 @@ import ShareNotebookModal from "@/components/ShareNotebookModal";
 import PensieveLogo from "@/components/PensieveLogo";
 import SocialLinks from "@/components/SocialLinks";
 import CartoonGuideTour from "@/components/CartoonGuideTour";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function NotebookHeader({
   id,
@@ -62,7 +63,7 @@ export default function NotebookHeader({
 
   return (
     <>
-      <header className="flex items-center gap-3 border-b border-rule bg-white/95 backdrop-blur-md px-4 py-3 sm:gap-4 sm:px-8 sm:py-3.5 sticky top-0 z-30 text-ink">
+      <header className="flex items-center gap-3 border-b border-rule bg-white/95 dark:bg-[#0F172A]/95 backdrop-blur-md px-4 py-3 sm:gap-4 sm:px-8 sm:py-3.5 sticky top-0 z-30 text-ink">
         {/* Pensieve Logo & Brand Title Link to Home */}
         <Link
           href="/"
@@ -74,7 +75,7 @@ export default function NotebookHeader({
           <span className="font-serif-display text-xl sm:text-2xl font-medium text-ink group-hover:text-accent transition tracking-wide hidden sm:inline">
             Pensieve
           </span>
-          <span className="text-neutral-300 font-light hidden sm:inline text-xl">/</span>
+          <span className="text-neutral-300 dark:text-neutral-600 font-light hidden sm:inline text-xl">/</span>
         </Link>
 
         {/* Back Arrow for Mobile View */}
@@ -101,7 +102,7 @@ export default function NotebookHeader({
                 e.currentTarget.blur();
               }
             }}
-            className="w-full max-w-[min(30ch,100%)] truncate rounded-xl border border-transparent bg-transparent px-2.5 py-1 font-serif-display text-xl sm:text-2xl font-medium text-ink outline-none transition hover:border-rule hover:bg-white focus:border-accent focus:bg-white sm:max-w-[42ch]"
+            className="w-full max-w-[min(30ch,100%)] truncate rounded-xl border border-transparent bg-transparent px-2.5 py-1 font-serif-display text-xl sm:text-2xl font-medium text-ink outline-none transition hover:border-rule hover:bg-white dark:hover:bg-[#1E293B] focus:border-accent focus:bg-white dark:focus:bg-[#1E293B] sm:max-w-[42ch]"
           />
           {isPending && (
             <span className="hidden shrink-0 font-mono text-xs text-neutral-400 sm:inline">
@@ -113,12 +114,15 @@ export default function NotebookHeader({
         {/* Social Links */}
         <SocialLinks className="hidden xl:flex" />
 
+        {/* Theme Switcher Toggle */}
+        <ThemeToggle />
+
         {/* Share Button */}
         <button
           type="button"
           onClick={() => setIsShareOpen(true)}
           aria-label="Share notebook link"
-          className="flex shrink-0 cursor-pointer items-center gap-2 rounded-xl border border-rule bg-white hover:bg-vessel px-3.5 py-2 text-xs font-semibold text-ink shadow-xs transition hover:border-accent"
+          className="flex shrink-0 cursor-pointer items-center gap-2 rounded-xl border border-rule bg-white dark:bg-[#1E293B] hover:bg-vessel dark:hover:bg-[#334155] px-3.5 py-2 text-xs font-semibold text-ink shadow-xs transition hover:border-accent"
         >
           <Share2 className="h-4 w-4 text-accent" />
           <span className="hidden md:inline">Share</span>
@@ -129,7 +133,7 @@ export default function NotebookHeader({
           type="button"
           onClick={() => setIsVisualizerOpen(true)}
           aria-label="Open ingestion pipeline visualizer"
-          className="hidden shrink-0 cursor-pointer items-center gap-2 rounded-xl border border-rule bg-white px-3.5 py-2 text-xs font-semibold text-ink shadow-xs transition hover:border-accent md:flex"
+          className="hidden shrink-0 cursor-pointer items-center gap-2 rounded-xl border border-rule bg-white dark:bg-[#1E293B] px-3.5 py-2 text-xs font-semibold text-ink shadow-xs transition hover:border-accent md:flex"
         >
           <Waypoints className="h-4 w-4 text-accent" />
           <span className="hidden lg:inline">Pipeline</span>
@@ -139,11 +143,11 @@ export default function NotebookHeader({
         <button
           type="button"
           onClick={() => setIsCmdPaletteOpen(true)}
-          className="hidden shrink-0 cursor-pointer items-center gap-2 rounded-xl border border-rule bg-white px-3.5 py-2 font-mono text-xs text-neutral-600 shadow-xs transition hover:border-accent md:flex"
+          className="hidden shrink-0 cursor-pointer items-center gap-2 rounded-xl border border-rule bg-white dark:bg-[#1E293B] px-3.5 py-2 font-mono text-xs text-neutral-600 dark:text-neutral-300 shadow-xs transition hover:border-accent md:flex"
         >
           <Search className="h-4 w-4 text-neutral-400" />
           <span>Search</span>
-          <kbd className="rounded border border-rule bg-vessel px-1.5 py-0.5 text-[11px] font-semibold text-neutral-700">⌘K</kbd>
+          <kbd className="rounded border border-rule bg-vessel dark:bg-[#0F172A] px-1.5 py-0.5 text-[11px] font-semibold text-neutral-700 dark:text-neutral-300">⌘K</kbd>
         </button>
 
         {/* Delete Notebook Button */}
@@ -152,7 +156,7 @@ export default function NotebookHeader({
           onClick={remove}
           aria-label="Delete notebook"
           title="Delete notebook"
-          className="shrink-0 cursor-pointer rounded-xl p-2.5 text-neutral-400 transition hover:bg-red-50 hover:text-red-600"
+          className="shrink-0 cursor-pointer rounded-xl p-2.5 text-neutral-400 transition hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-600"
         >
           <Trash2 className="h-5 w-5" />
         </button>
