@@ -20,6 +20,7 @@ import {
 import { useAuth, useUser, SignInButton } from "@clerk/nextjs";
 import { CitationPayload, RetrievalTracePayload } from "@/app/api/chat/route";
 import SourceViewerModal from "@/components/SourceViewerModal";
+import AnimatedGuideDialog from "@/components/AnimatedGuideDialog";
 import { VariantKind } from "@/lib/locator";
 import { useReadingVariant } from "@/hooks/useReadingVariant";
 
@@ -325,6 +326,9 @@ export default function ChatPanel({
           )}
         </div>
       </div>
+
+      {/* Animated Interactive Onboarding Guide Dialogue Box */}
+      <AnimatedGuideDialog />
 
       {/* Chat Messages */}
       <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
