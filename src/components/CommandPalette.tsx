@@ -34,16 +34,19 @@ export default function CommandPalette({
     if (!isOpen) return;
 
     function handleKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+      if ((e.metaKey || e.ctrlKey) && (e.key.toLowerCase() === "k" || e.code === "KeyK")) {
         e.preventDefault();
+        e.stopPropagation();
         onClose();
       }
       if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
         onClose();
       }
     }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;

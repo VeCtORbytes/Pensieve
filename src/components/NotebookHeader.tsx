@@ -31,16 +31,17 @@ export default function NotebookHeader({
   // Study Tools state
   const [isStudyToolsOpen, setIsStudyToolsOpen] = useState(false);
 
-  // Global Command+K / Ctrl+K keyboard shortcut listener
+  // Robust capture-phase Command+K / Ctrl+K keyboard shortcut listener
   useEffect(() => {
     function handleGlobalKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+      if ((e.metaKey || e.ctrlKey) && (e.key.toLowerCase() === "k" || e.code === "KeyK")) {
         e.preventDefault();
+        e.stopPropagation();
         setIsCmdPaletteOpen((prev) => !prev);
       }
     }
-    window.addEventListener("keydown", handleGlobalKeyDown);
-    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+    window.addEventListener("keydown", handleGlobalKeyDown, true);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown, true);
   }, []);
 
   function save() {
