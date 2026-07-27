@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Volume2, Layers, Loader2, GitFork, FileText, Download, Copy, Check, Sparkles } from "lucide-react";
+import { Volume2, Layers, Loader2, GitFork, FileText } from "lucide-react";
 import AudioPlayer from "@/components/AudioPlayer";
 import StudyToolsModal from "@/components/StudyToolsModal";
 import MindMapModal from "@/components/MindMapModal";
+import BriefingModal from "@/components/BriefingModal";
 
 /**
  * Persistent home for generated notebook outputs (Audio Overview, Study Tools,
@@ -19,7 +20,6 @@ export default function StudioPanel({ notebookId }: { notebookId: string }) {
   // Executive Briefing & Study Guide states
   const [isBriefingLoading, setIsBriefingLoading] = useState(false);
   const [briefingData, setBriefingData] = useState<{ title: string; markdown: string } | null>(null);
-  const [copiedBriefing, setCopiedBriefing] = useState(false);
 
   async function handleGenerateAudioOverview() {
     try {
@@ -67,25 +67,6 @@ export default function StudioPanel({ notebookId }: { notebookId: string }) {
     } finally {
       setIsBriefingLoading(false);
     }
-  }
-
-  function handleDownloadBriefing() {
-    if (!briefingData) return;
-    const blob = new Blob([briefingData.markdown], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${briefingData.title.replace(/\s+/g, "-")}.md`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  }
-
-  function handleCopyBriefing() {
-    if (!briefingData) return;
-    navigator.clipboard.writeText(briefingData.markdown);
-    setCopiedBriefing(true);
-    setTimeout(() => setCopiedBriefing(false), 2000);
   }
 
   return (
@@ -137,75 +118,34 @@ export default function StudioPanel({ notebookId }: { notebookId: string }) {
 
         {/* Executive Briefing & Study Guide entry */}
         <div className="rounded-xl bg-surface border border-rule shadow-xs overflow-hidden">
-          {briefingData ? (
-            <div className="p-4 space-y-3">
-              <div className="flex items-center justify-between border-b border-rule pb-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <FileText className="h-4 w-4 text-accent shrink-0" />
-                  <span className="text-xs font-semibold text-ink truncate">{briefingData.title}</span>
-                </div>
-
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={handleCopyBriefing}
-                    title="Copy Markdown"
-                    className="p-1.5 text-neutral-500 hover:text-ink hover:bg-vessel rounded-lg transition cursor-pointer"
-                  >
-                    {copiedBriefing ? <Check className="w-3.5 h-3.5 text-[#1D9E75]" /> : <Copy className="w-3.5 h-3.5" />}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleDownloadBriefing}
-                    title="Download .md"
-                    className="p-1.5 text-neutral-500 hover:text-ink hover:bg-vessel rounded-lg transition cursor-pointer"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setBriefingData(null)}
-                    className="p-1.5 text-neutral-400 hover:text-ink rounded-lg transition cursor-pointer"
-                  >
-                    ✕
-                  </button>
-                </div>
-              </div>
-
-              <div className="max-h-60 overflow-y-auto p-3 bg-vessel rounded-xl border border-rule text-xs font-mono text-neutral-700 whitespace-pre-wrap leading-relaxed">
-                {briefingData.markdown}
+          <div className="p-4 space-y-3">
+            <div className="flex items-center gap-2.5">
+              <FileText className="h-4 w-4 shrink-0 text-accent" />
+              <div className="min-w-0">
+                <p className="truncate text-xs font-semibold text-ink">Executive Briefing & Study Guide</p>
+                <p className="text-[11px] text-neutral-400">Synthesize formatted document</p>
               </div>
             </div>
-          ) : (
-            <div className="p-4 space-y-3">
-              <div className="flex items-center gap-2.5">
-                <FileText className="h-4 w-4 shrink-0 text-accent" />
-                <div className="min-w-0">
-                  <p className="truncate text-xs font-semibold text-ink">Executive Briefing & Study Guide</p>
-                  <p className="text-[11px] text-neutral-400">Synthesize formatted document</p>
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-2 pt-1">
-                <button
-                  type="button"
-                  disabled={isBriefingLoading}
-                  onClick={() => handleGenerateBriefing("briefing")}
-                  className="w-full flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-ink hover:bg-accent text-white text-[11px] font-semibold transition disabled:opacity-50 cursor-pointer"
-                >
-                  {isBriefingLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : "Briefing Doc"}
-                </button>
-                <button
-                  type="button"
-                  disabled={isBriefingLoading}
-                  onClick={() => handleGenerateBriefing("study-guide")}
-                  className="w-full flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-white border border-rule hover:border-accent text-ink text-[11px] font-semibold transition disabled:opacity-50 cursor-pointer shadow-2xs"
-                >
-                  {isBriefingLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : "Study Guide"}
-                </button>
-              </div>
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                disabled={isBriefingLoading}
+                onClick={() => handleGenerateBriefing("briefing")}
+                className="w-full flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-ink hover:bg-accent text-white text-[11px] font-semibold transition disabled:opacity-50 cursor-pointer"
+              >
+                {isBriefingLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : "Briefing Doc"}
+              </button>
+              <button
+                type="button"
+                disabled={isBriefingLoading}
+                onClick={() => handleGenerateBriefing("study-guide")}
+                className="w-full flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-white border border-rule hover:border-accent text-ink text-[11px] font-semibold transition disabled:opacity-50 cursor-pointer shadow-2xs"
+              >
+                {isBriefingLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : "Study Guide"}
+              </button>
             </div>
-          )}
+          </div>
         </div>
 
         {/* Study Tools entry */}
@@ -257,6 +197,14 @@ export default function StudioPanel({ notebookId }: { notebookId: string }) {
           </div>
         </div>
       </div>
+
+      {/* Briefing Modal */}
+      {briefingData && (
+        <BriefingModal
+          data={briefingData}
+          onClose={() => setBriefingData(null)}
+        />
+      )}
 
       {/* Mind Map Modal Launcher */}
       {mindMapOpen && (

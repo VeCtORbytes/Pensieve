@@ -45,8 +45,8 @@ export async function POST(req: NextRequest) {
 
     const systemPrompt =
       format === "study-guide"
-        ? `You are an expert academic tutor. Create a comprehensive, highly structured Study Guide & Exam Prep document based strictly on the provided notebook sources.`
-        : `You are a Principal AI Strategist. Synthesize an Executive Briefing & Intelligence Memorandum based strictly on the provided notebook sources.`;
+        ? `You are an expert academic tutor. Create a beautifully formatted, highly structured Study Guide & Exam Prep document based strictly on the provided notebook sources.`
+        : `You are a Principal AI Strategist. Synthesize a publication-grade, beautifully formatted Executive Briefing Memorandum based strictly on the provided notebook sources.`;
 
     const userPrompt =
       format === "study-guide"
@@ -54,44 +54,94 @@ export async function POST(req: NextRequest) {
 ${combinedText}
 ========================
 
-Generate a complete, publication-ready Markdown Study Guide containing:
-# [Notebook Title]: Comprehensive Study Guide
+Generate a beautifully formatted, publication-ready Markdown Study Guide for "${notebook.title}".
 
-## 1. Executive Summary & Learning Objectives
-- High-level overview of core subjects covered in the sources.
+Follow this exact structure:
 
-## 2. Core Concepts & Technical Breakdown
-- Detailed explanations of key theories, frameworks, methodologies, and findings.
+# 📖 Study Guide: ${notebook.title}
 
-## 3. Key Vocabulary & Glossary
-- Bulleted list of technical terms with concise definitions.
+> **Overview**: Synthesized exam preparation & key concept guide grounded in uploaded research sources.
 
-## 4. Practice Questions & Self-Assessment
-- 5 multiple-choice/short-answer study questions with hidden answer keys.
+---
 
-## 5. Critical Takeaways & Summary
-- Key bullet points to remember for exams or research.`
+## 🎯 1. Executive Summary & Learning Objectives
+- **Core Subject**: Summary of primary subject matter.
+- **Key Objectives**: Bulleted list of 3-5 learning goals.
+
+---
+
+## 💡 2. Core Concepts & Frameworks
+| Concept | Definition / Formula | Significance |
+| :--- | :--- | :--- |
+| **Term 1** | Explanation | Importance |
+| **Term 2** | Explanation | Importance |
+
+### In-Depth Breakdown
+Detailed paragraphs explaining core mechanisms, methodologies, and findings with **bold emphasis** on key terminology.
+
+---
+
+## 📚 3. Key Vocabulary & Glossary
+- **Term A**: Definition and context.
+- **Term B**: Definition and context.
+
+---
+
+## ❓ 4. Self-Assessment Practice Questions
+1. **Question 1**: Description.
+   - *Answer*: Detailed answer key.
+2. **Question 2**: Description.
+   - *Answer*: Detailed answer key.
+
+---
+
+## 📌 5. Summary Check-list
+- [ ] Review core definitions.
+- [ ] Understand key findings.`
         : `=== NOTEBOOK SOURCES ===
 ${combinedText}
 ========================
 
-Generate a complete, publication-ready Executive Briefing Memorandum containing:
-# Executive Briefing: [Notebook Title]
+Generate a publication-ready Executive Briefing Memorandum for "${notebook.title}".
 
-## 1. Executive Memorandum & Context
-- Strategic summary of all ingested materials.
+Follow this exact structure:
+
+# 📋 Executive Briefing: ${notebook.title}
+
+> **CONFIDENTIAL INTELLIGENCE BRIEFING** — Synthesized research summary grounded in ingested notebook sources.
+
+---
+
+## 1. Executive Summary & Context
+A concise 2-paragraph overview highlighting the strategic background and primary objectives of the research.
+
+---
 
 ## 2. Key Findings & Strategic Insights
-- Categorized bullet points highlighting core facts, numbers, and arguments.
+| Domain | Strategic Insight | Impact Level |
+| :--- | :--- | :--- |
+| **Finding 1** | Concise description | High |
+| **Finding 2** | Concise description | Medium |
+
+- **Core Insight A**: High-impact takeaway with supporting data.
+- **Core Insight B**: High-impact takeaway with supporting data.
+
+---
 
 ## 3. Source-by-Source Synthesis
-- Detailed breakdown summarizing each source's primary contribution.
+Summarize each ingested source's core contributions in structured bullet points.
+
+---
 
 ## 4. Strategic Implications & Recommendations
-- Actionable takeaways derived from the research.
+1. **Recommendation 1**: Actionable next steps based on source evidence.
+2. **Recommendation 2**: Actionable next steps based on source evidence.
 
-## 5. Key Terminology & Definitions
-- Concise reference glossary.`;
+---
+
+## 5. Key Glossary
+- **Concept X**: Definition.
+- **Concept Y**: Definition.`;
 
     const { text } = await generateText({
       model: openai("gpt-4o-mini"),
