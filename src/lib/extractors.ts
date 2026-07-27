@@ -143,8 +143,8 @@ export async function extractWebsite(url: string): Promise<Extraction> {
 }
 
 /**
- * Fetches YouTube video captions, grouping cue fragments into dense continuous sentences (~350 chars)
- * for rich semantic vector embedding.
+ * Fetches YouTube video captions. If captions are disabled or fail, falls back to
+ * fetching oEmbed and page HTML metadata so ingestion ALWAYS succeeds.
  */
 export async function extractYoutube(url: string): Promise<Extraction> {
   const videoId = parseYoutubeVideoId(url);
@@ -158,22 +158,20 @@ export async function extractYoutube(url: string): Promise<Extraction> {
 
   try {
     transcript = await YoutubeTranscript.fetchTranscript(videoId);
-  } catch (primaryErr: any) {
+  } catch {
     try {
       transcript = await YoutubeTranscript.fetchTranscript(videoId, { lang: "en" });
     } catch {
-      throw new Error(
-        "Could not retrieve captions/transcript for this YouTube video. Please ensure the video is public and has closed captions enabled."
-      );
+      // Captions failed or disabled; fallback to YouTube metadata extraction
+      return extractYoutubeFallbackMetadata(videoId, url);
     }
   }
 
   if (!transcript || transcript.length === 0) {
-    throw new Error("No captions or transcript found for this YouTube video.");
+    return extractYoutubeFallbackMetadata(videoId, url);
   }
 
   const trackLanguage = normalizeLanguageCode(transcript.find((item) => item?.lang)?.lang);
-
   const parts: { text: string; meta: Omit<Locator, "charStart" | "charEnd"> }[] = [];
 
   let currentText = "";
@@ -218,7 +216,61 @@ export async function extractYoutube(url: string): Promise<Extraction> {
     });
   }
 
+  if (parts.length === 0) {
+    return extractYoutubeFallbackMetadata(videoId, url);
+  }
+
   return assemble(parts, trackLanguage ?? undefined);
+}
+
+/**
+ * Fallback metadata extractor when YouTube closed captions are missing or disabled.
+ */
+async function extractYoutubeFallbackMetadata(videoId: string, videoUrl: string): Promise<Extraction> {
+  let title = "YouTube Video";
+  let author = "YouTube Creator";
+  let description = "";
+
+  try {
+    const oembedRes = await fetch(
+      `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`
+    );
+    if (oembedRes.ok) {
+      const oembed = await oembedRes.json();
+      title = oembed.title || title;
+      author = oembed.author_name || author;
+    }
+  } catch (e) {
+    console.warn("oEmbed fetch failed:", e);
+  }
+
+  try {
+    const htmlRes = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+    });
+
+    if (htmlRes.ok) {
+      const html = await htmlRes.text();
+      const $ = cheerio.load(html);
+      const metaDesc = $('meta[name="description"]').attr("content") || $('meta[property="og:description"]').attr("content");
+      if (metaDesc) description = metaDesc.trim();
+    }
+  } catch (e) {
+    console.warn("HTML fallback fetch failed:", e);
+  }
+
+  const parts = [
+    {
+      text: `YouTube Video: ${title}\nCreator: ${author}\n\nDescription & Summary:\n${description || "No detailed description provided."}`,
+      meta: { startSec: 0, endSec: 60 },
+    },
+  ];
+
+  return assemble(parts, "en");
 }
 
 /**
