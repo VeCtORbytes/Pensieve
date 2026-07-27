@@ -67,14 +67,14 @@ export default function CommandPalette({
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 backdrop-blur-xs pt-20 p-4"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 backdrop-blur-xs pt-20 p-4 outline-none focus:outline-none"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-3xl max-w-xl w-full shadow-2xl overflow-hidden border border-rule text-ink animate-in fade-in zoom-in-95 duration-150"
+        className="bg-white rounded-3xl max-w-xl w-full shadow-2xl overflow-hidden border border-rule text-ink animate-in fade-in zoom-in-95 duration-150 outline-none focus:outline-none focus-visible:outline-none"
       >
-        {/* Search Bar */}
-        <div className="flex items-center px-4 py-1 border-b border-rule bg-vessel">
+        {/* Search Bar Container */}
+        <div className="flex items-center px-4 py-1 border-b border-rule bg-vessel focus-within:bg-white focus-within:border-accent/40 transition-colors">
           <Search className="w-4 h-4 text-neutral-400 shrink-0" />
           <input
             autoFocus
@@ -82,12 +82,12 @@ export default function CommandPalette({
             placeholder="Search sources or select starter prompt (ESC to close)..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full px-3 py-3.5 text-xs bg-transparent outline-none text-ink placeholder-neutral-400 font-sans"
+            className="w-full px-3 py-3.5 text-xs bg-transparent border-0 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 text-ink placeholder-neutral-400 font-sans shadow-none"
           />
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 text-neutral-400 hover:text-ink hover:bg-white rounded-xl transition cursor-pointer"
+            className="p-1.5 text-neutral-400 hover:text-ink hover:bg-vessel rounded-xl transition cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
