@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { ChevronDown, ChevronUp, Layers, ShieldAlert, Sparkles, Wand2 } from "lucide-react";
+import { ChevronDown, ChevronUp, ShieldAlert, Sparkles, Wand2 } from "lucide-react";
 import { RetrievalTracePayload } from "@/app/api/chat/route";
 
 export default function RetrievalTrace({
@@ -22,18 +22,11 @@ export default function RetrievalTrace({
     if (reduced) return;
     const t = [
       setTimeout(() => setStage(1), 300),
-      setTimeout(() => setStage(2), 1200),
-      setTimeout(() => setStage(3), 1800),
+      setTimeout(() => setStage(2), 1100),
+      setTimeout(() => setStage(3), 1700),
     ];
     return () => t.forEach((id) => clearTimeout(id));
   }, [reduced]);
-
-  useEffect(() => {
-    if (!isStreaming && stage === 3) {
-      const t = setTimeout(() => setOpen(false), 2000);
-      return () => clearTimeout(t);
-    }
-  }, [isStreaming, stage]);
 
   const top = useMemo(
     () => Math.max(...trace.candidates.map((c) => c.score), 0.001),
@@ -64,7 +57,7 @@ export default function RetrievalTrace({
   }
 
   return (
-    <div className="rounded-2xl border border-[#3B4CC0]/30 bg-gradient-to-b from-[#141A22] to-[#1E2638] text-white overflow-hidden text-xs transition-all duration-300 shadow-lg">
+    <div className="my-2 rounded-2xl border border-[#3B4CC0]/30 bg-gradient-to-b from-[#141A22] to-[#1E2638] text-white overflow-hidden text-xs transition-all duration-300 shadow-lg">
       {/* 3D Harry Potter Pensieve Header Bar */}
       <button
         type="button"
