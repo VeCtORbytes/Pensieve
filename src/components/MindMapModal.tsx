@@ -19,7 +19,6 @@ import {
   ZoomOut,
   Maximize2,
 } from "lucide-react";
-import mermaid from "mermaid";
 
 interface MindMapNodeItem {
   id: string;
@@ -88,13 +87,22 @@ export default function MindMapModal({
   const mermaidRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    mermaid.initialize({
-      startOnLoad: false,
-      theme: "neutral",
-      securityLevel: "loose",
-      fontFamily: "Inter, sans-serif",
-      flowchart: { useMaxWidth: false, htmlLabels: true, curve: "basis" },
-    });
+    let isMounted = true;
+    import("mermaid").then((m) => {
+      if (!isMounted) return;
+      const mermaidObj = m.default || m;
+      mermaidObj.initialize({
+        startOnLoad: false,
+        theme: "neutral",
+        securityLevel: "loose",
+        fontFamily: "Inter, sans-serif",
+        flowchart: { useMaxWidth: false, htmlLabels: true, curve: "basis" },
+      });
+    }).catch((err) => console.error("Failed to load mermaid:", err));
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const rootTree = useMemo(() => {
@@ -132,30 +140,34 @@ export default function MindMapModal({
     generateMindMap();
   }, [notebookId]);
 
-  // Render Mermaid SVG when data or tab changes
+  // Render Mermaid SVG when data or tab changes using dynamic client import
   useEffect(() => {
     if (!data || !data.mermaidCode || activeTab !== "mermaid") return;
 
     let isMounted = true;
     const renderId = `mermaid-svg-${Date.now()}`;
 
-    try {
-      mermaid.render(renderId, data.mermaidCode).then(({ svg }) => {
-        if (isMounted && mermaidRef.current) {
-          mermaidRef.current.innerHTML = svg;
-          const svgEl = mermaidRef.current.querySelector("svg");
-          if (svgEl) {
-            svgEl.style.minWidth = "800px";
-            svgEl.style.width = "100%";
-            svgEl.style.height = "auto";
+    import("mermaid").then((m) => {
+      const mermaidObj = m.default || m;
+      mermaidObj
+        .render(renderId, data.mermaidCode)
+        .then(({ svg }) => {
+          if (isMounted && mermaidRef.current) {
+            mermaidRef.current.innerHTML = svg;
+            const svgEl = mermaidRef.current.querySelector("svg");
+            if (svgEl) {
+              svgEl.style.minWidth = "800px";
+              svgEl.style.width = "100%";
+              svgEl.style.height = "auto";
+            }
           }
-        }
-      }).catch((e) => {
-        console.error("Mermaid render error:", e);
-      });
-    } catch (e) {
-      console.error("Mermaid init error:", e);
-    }
+        })
+        .catch((e) => {
+          console.error("Mermaid render error:", e);
+        });
+    }).catch((e) => {
+      console.error("Mermaid import error:", e);
+    });
 
     return () => {
       isMounted = false;
