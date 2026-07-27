@@ -16,6 +16,7 @@ import {
   AlertTriangle,
   Copy,
   Check,
+  GripHorizontal,
 } from "lucide-react";
 import { Locator, SegmentSpan, VariantKind } from "@/lib/locator";
 import { spanForSegmentRange, parseSegmentSpans } from "@/lib/segments";
@@ -30,8 +31,7 @@ type VariantOption = {
 
 const languageOptions: { kind: VariantKind; label: string }[] = [
   { kind: "ORIGINAL", label: "Original" },
-  { kind: "ENGLISH", label: "English" },
-  { kind: "ROMANIZED", label: "Romanized" },
+  { kind: "ENGLISH", label: "Translate (EN)" },
 ];
 
 export interface SourceViewerProps {
@@ -61,6 +61,16 @@ export default function SourceViewerModal({
   const [copied, setCopied] = useState(false);
   const [loadingPdf, setLoadingPdf] = useState(false);
   const [isIframeLoading, setIsIframeLoading] = useState(true);
+
+  // Draggable window state
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragRef = useRef<{ startX: number; startY: number; initialX: number; initialY: number }>({
+    startX: 0,
+    startY: 0,
+    initialX: 0,
+    initialY: 0,
+  });
 
   const { variant, select } = useReadingVariant(notebookId);
 
@@ -103,6 +113,42 @@ export default function SourceViewerModal({
   useEffect(() => {
     setIsIframeLoading(true);
   }, [effectiveUrl, locator?.startSec]);
+
+  // Drag listeners
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest("button, a, input, select, iframe")) return;
+    setIsDragging(true);
+    dragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      initialX: position.x,
+      initialY: position.y,
+    };
+  };
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const dx = e.clientX - dragRef.current.startX;
+      const dy = e.clientY - dragRef.current.startY;
+      setPosition({
+        x: dragRef.current.initialX + dx,
+        y: dragRef.current.initialY + dy,
+      });
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isDragging]);
 
   useEffect(() => {
     let isMounted = true;
@@ -235,16 +281,33 @@ export default function SourceViewerModal({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs animate-in fade-in duration-150 sm:p-6"
     >
       <div
-        className={`flex h-full w-full flex-col overflow-hidden bg-white shadow-2xl sm:max-w-4xl sm:rounded-3xl sm:border sm:border-rule ${
+        style={{ transform: `translate(${position.x}px, ${position.y}px)` }}
+        className={`flex h-full w-full flex-col overflow-hidden bg-white shadow-2xl transition-transform duration-75 sm:max-w-4xl sm:rounded-3xl sm:border sm:border-rule ${
           needsTallViewer ? "sm:h-[88vh]" : "sm:h-auto sm:max-h-[85vh]"
         }`}
       >
-        {/* Modal Header */}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rule bg-white px-4 py-3 sm:px-6 sm:py-4">
-          <div className="flex min-w-0 items-center gap-3">
+        {/* Modal Header — Draggable Bar with Close [X] on TOP LEFT */}
+        <div
+          onMouseDown={handleMouseDown}
+          className="flex flex-wrap items-center justify-between gap-2 border-b border-rule bg-[#F5F7F8] px-4 py-3 sm:px-6 sm:py-3.5 cursor-grab active:cursor-grabbing select-none"
+        >
+          {/* Top-Left Close Button + Title */}
+          <div className="flex items-center gap-3 min-w-0">
+            {/* Top-Left Close [X] Button */}
+            <button
+              type="button"
+              onClick={onClose}
+              title="Close window"
+              className="p-1.5 text-neutral-500 hover:text-ink hover:bg-white rounded-xl transition cursor-pointer border border-rule shadow-2xs shrink-0"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <GripHorizontal className="w-4 h-4 text-neutral-300 shrink-0 hidden sm:inline" />
             <TypeBadge type={source.type} />
+
             <div className="min-w-0">
-              <h3 className="max-w-full truncate text-sm font-semibold text-ink sm:max-w-md">
+              <h3 className="max-w-full truncate text-sm font-semibold text-ink sm:max-w-xs">
                 {source.title}
               </h3>
               {effectiveUrl && (
@@ -252,7 +315,7 @@ export default function SourceViewerModal({
                   href={effectiveUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[11px] text-neutral-500 hover:text-accent flex items-center gap-1 mt-0.5 truncate max-w-sm"
+                  className="text-[11px] text-neutral-500 hover:text-accent flex items-center gap-1 mt-0.5 truncate max-w-xs"
                 >
                   <span className="truncate">{effectiveUrl}</span>
                   <ExternalLink className="w-3 h-3 shrink-0" />
@@ -261,6 +324,7 @@ export default function SourceViewerModal({
             </div>
           </div>
 
+          {/* Right Header Action Controls */}
           <div className="flex items-center gap-2">
             {/* Copy Extracted Text Button */}
             {displayText && (
@@ -268,7 +332,7 @@ export default function SourceViewerModal({
                 type="button"
                 onClick={handleCopyText}
                 title="Copy Extracted Text"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-vessel hover:bg-neutral-100 border border-rule text-xs font-semibold text-ink transition cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-neutral-100 border border-rule text-xs font-semibold text-ink transition cursor-pointer shadow-2xs"
               >
                 {copied ? (
                   <>
@@ -284,10 +348,11 @@ export default function SourceViewerModal({
               </button>
             )}
 
+            {/* Translate Language Switcher */}
             {showSwitcher && (
               <div className="flex items-center gap-1.5">
                 <Languages className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
-                <div className="flex bg-vessel p-0.5 rounded-full border border-rule text-xs font-medium">
+                <div className="flex bg-white p-0.5 rounded-full border border-rule text-xs font-medium shadow-2xs">
                   {options.map((option) => {
                     const active = option.kind === variant;
                     return (
@@ -295,14 +360,14 @@ export default function SourceViewerModal({
                         key={option.kind}
                         type="button"
                         onClick={() => select(option.kind)}
-                        className={`px-2.5 py-1.5 rounded-full transition cursor-pointer flex items-center gap-1 ${
+                        className={`px-2.5 py-1 rounded-full transition cursor-pointer flex items-center gap-1 ${
                           active
-                            ? "bg-white text-ink font-semibold shadow-xs"
+                            ? "bg-ink text-white font-semibold shadow-xs"
                             : "text-neutral-500 hover:text-ink"
                         }`}
                       >
                         {active && variantLoading && (
-                          <Loader2 className="w-3 h-3 animate-spin" />
+                          <Loader2 className="w-3 h-3 animate-spin text-white" />
                         )}
                         {option.label}
                       </button>
@@ -313,13 +378,13 @@ export default function SourceViewerModal({
             )}
 
             {(source.type === "PDF" || source.type === "YOUTUBE") && (
-              <div className="flex bg-vessel p-0.5 rounded-full border border-rule text-xs font-medium">
+              <div className="flex bg-white p-0.5 rounded-full border border-rule text-xs font-medium shadow-2xs">
                 <button
                   type="button"
                   onClick={() => setActiveViewTab("viewer")}
-                  className={`px-3 py-1.5 rounded-full transition cursor-pointer ${
+                  className={`px-3 py-1 rounded-full transition cursor-pointer ${
                     activeViewTab === "viewer"
-                      ? "bg-white text-ink font-semibold shadow-xs"
+                      ? "bg-ink text-white font-semibold shadow-xs"
                       : "text-neutral-500 hover:text-ink"
                   }`}
                 >
@@ -328,9 +393,9 @@ export default function SourceViewerModal({
                 <button
                   type="button"
                   onClick={() => setActiveViewTab("text")}
-                  className={`px-3 py-1.5 rounded-full transition cursor-pointer ${
+                  className={`px-3 py-1 rounded-full transition cursor-pointer ${
                     activeViewTab === "text"
-                      ? "bg-white text-ink font-semibold shadow-xs"
+                      ? "bg-ink text-white font-semibold shadow-xs"
                       : "text-neutral-500 hover:text-ink"
                   }`}
                 >
@@ -338,14 +403,6 @@ export default function SourceViewerModal({
                 </button>
               </div>
             )}
-
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-2 text-neutral-400 hover:text-ink hover:bg-vessel rounded-xl transition cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
           </div>
         </div>
 
@@ -464,7 +521,7 @@ export default function SourceViewerModal({
               {variantError && (
                 <div className="p-2.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-900 flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
-                  <span>Could not load this language: {variantError}</span>
+                  <span>Could not load translation: {variantError}</span>
                 </div>
               )}
 
