@@ -10,6 +10,7 @@ import AuthControls from "@/components/AuthControls";
 import IngestionPipelineVisualizer from "@/components/IngestionPipelineVisualizer";
 import ShareNotebookModal from "@/components/ShareNotebookModal";
 import PensieveLogo from "@/components/PensieveLogo";
+import SocialLinks from "@/components/SocialLinks";
 
 export default function NotebookHeader({
   id,
@@ -107,6 +108,9 @@ export default function NotebookHeader({
             </span>
           )}
         </div>
+
+        {/* Social Links */}
+        <SocialLinks className="hidden xl:flex" />
 
         {/* Share Button */}
         <button

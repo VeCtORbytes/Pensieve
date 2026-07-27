@@ -6,6 +6,7 @@ import { createNotebook } from "./actions/notebooks";
 import AuthControls from "@/components/AuthControls";
 import DeleteNotebookButton from "@/components/DeleteNotebookButton";
 import PensieveLogo from "@/components/PensieveLogo";
+import SocialLinks from "@/components/SocialLinks";
 
 export const dynamic = "force-dynamic";
 
@@ -23,9 +24,9 @@ export default async function HomePage() {
   const totalSources = notebooks.reduce((sum, n) => sum + n._count.sources, 0);
 
   return (
-    <main className="min-h-screen bg-vessel text-ink px-6 py-12">
-      <div className="mx-auto max-w-5xl space-y-10">
-        {/* Navigation Bar with Auth */}
+    <main className="min-h-screen bg-vessel text-ink px-6 py-12 flex flex-col justify-between">
+      <div className="mx-auto max-w-5xl space-y-10 w-full">
+        {/* Navigation Bar with Auth & Social Links */}
         <div className="flex items-center justify-between pb-5 border-b border-rule">
           <div className="flex items-center gap-2.5">
             <PensieveLogo className="w-8 h-8" />
@@ -33,7 +34,11 @@ export default async function HomePage() {
               Pensieve
             </span>
           </div>
-          <AuthControls />
+
+          <div className="flex items-center gap-4">
+            <SocialLinks />
+            <AuthControls />
+          </div>
         </div>
 
         {/* Top Hero Bar */}
@@ -136,6 +141,16 @@ export default async function HomePage() {
           </div>
         )}
       </div>
+
+      {/* Footer with Social Links */}
+      <footer className="mx-auto max-w-5xl w-full pt-16 pb-6 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-rule text-xs text-neutral-500 mt-12">
+        <div className="flex items-center gap-2">
+          <PensieveLogo className="w-5 h-5" />
+          <span>Pensieve AI Studio © 2026</span>
+        </div>
+
+        <SocialLinks />
+      </footer>
     </main>
   );
 }
