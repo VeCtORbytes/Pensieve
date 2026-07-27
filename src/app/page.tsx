@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { createNotebook } from "./actions/notebooks";
 import AuthControls from "@/components/AuthControls";
 import DeleteNotebookButton from "@/components/DeleteNotebookButton";
+import PensieveLogo from "@/components/PensieveLogo";
 
 export const dynamic = "force-dynamic";
 
@@ -26,9 +27,12 @@ export default async function HomePage() {
       <div className="mx-auto max-w-5xl space-y-10">
         {/* Navigation Bar with Auth */}
         <div className="flex items-center justify-between pb-5 border-b border-rule">
-          <span className="font-serif-display text-2xl font-normal text-ink tracking-wide">
-            Pensieve
-          </span>
+          <div className="flex items-center gap-2.5">
+            <PensieveLogo className="w-8 h-8" />
+            <span className="font-serif-display text-2xl font-normal text-ink tracking-wide">
+              Pensieve
+            </span>
+          </div>
           <AuthControls />
         </div>
 

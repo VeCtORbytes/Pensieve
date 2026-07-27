@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
-import { ArrowLeft, Trash2, Search, Waypoints, Sparkles } from "lucide-react";
+import { ArrowLeft, Trash2, Search, Waypoints } from "lucide-react";
 import { renameNotebook, deleteNotebook } from "@/app/actions/notebooks";
 import CommandPalette from "@/components/CommandPalette";
 import SourceViewerModal from "@/components/SourceViewerModal";
 import AuthControls from "@/components/AuthControls";
 import IngestionPipelineVisualizer from "@/components/IngestionPipelineVisualizer";
+import PensieveLogo from "@/components/PensieveLogo";
 
 export default function NotebookHeader({
   id,
@@ -63,9 +64,7 @@ export default function NotebookHeader({
           title="Back to all notebooks"
           className="flex items-center gap-2 shrink-0 rounded-xl px-2 py-1 hover:bg-vessel transition group cursor-pointer"
         >
-          <div className="p-1.5 rounded-xl bg-accent/10 border border-accent/20 text-accent group-hover:bg-accent group-hover:text-white transition shadow-2xs">
-            <Sparkles className="w-4 h-4 animate-pulse" />
-          </div>
+          <PensieveLogo className="w-7 h-7 group-hover:scale-105 transition-transform" />
           <span className="font-serif-display text-lg font-normal text-ink group-hover:text-accent transition tracking-wide hidden sm:inline">
             Pensieve
           </span>
