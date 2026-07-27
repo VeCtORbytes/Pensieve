@@ -5,7 +5,7 @@ import { Extraction, Locator, Segment } from "./locator";
 import { detectLanguage, normalizeLanguageCode } from "./language";
 
 /**
- * Robustly parses YouTube Video ID from any YouTube URL (watch, shorts, embed, short link).
+ * Robustly parses YouTube Video ID from any YouTube URL (watch, live, shorts, embed, short link).
  */
 export function parseYoutubeVideoId(urlOrId: string): string | null {
   if (!urlOrId) return null;
@@ -13,7 +13,7 @@ export function parseYoutubeVideoId(urlOrId: string): string | null {
   if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) return trimmed;
 
   const match = trimmed.match(
-    /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([a-zA-Z0-9_-]{11})/
+    /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|live\/|watch\?v=|watch\?.+&v=|shorts\/))([a-zA-Z0-9_-]{11})/
   );
   return match ? match[1] : null;
 }
@@ -150,7 +150,7 @@ export async function extractYoutube(url: string): Promise<Extraction> {
   const videoId = parseYoutubeVideoId(url);
   if (!videoId) {
     throw new Error(
-      "Invalid YouTube URL format. Please provide a valid YouTube video or Shorts link (e.g. https://www.youtube.com/watch?v=...)."
+      "Invalid YouTube URL format. Please provide a valid YouTube video, Live stream, or Shorts link (e.g. https://www.youtube.com/watch?v=... or https://www.youtube.com/live/...)."
     );
   }
 
