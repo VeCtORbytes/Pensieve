@@ -17,12 +17,22 @@ const INDEXED_PAYLOAD_FIELDS = ["notebookId", "sourceId", "variantKind"] as cons
 let ensurePromise: Promise<void> | null = null;
 
 /**
+ * Set once the collection and its payload indexes are known to exist (e.g. after
+ * `npm run setup:qdrant` against this Qdrant instance), so serverless cold starts
+ * skip the getCollections()/createCollection() round trip entirely instead of
+ * re-checking Qdrant on every fresh invocation.
+ */
+const COLLECTION_READY = process.env.QDRANT_COLLECTION_READY === "true";
+
+/**
  * Idempotently creates the collection and its payload indexes, so a fresh
  * environment works without running `npm run setup:qdrant` first.
  *
  * Memoized per process. A failure clears the memo so the next caller retries.
  */
 export function ensureCollection(): Promise<void> {
+  if (COLLECTION_READY) return Promise.resolve();
+
   if (!ensurePromise) {
     ensurePromise = createCollection().catch((err) => {
       ensurePromise = null;

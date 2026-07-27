@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback, memo } from "react";
 import {
   Bot,
   User,
@@ -166,19 +166,18 @@ export default function ChatPanel({
           const trimmed = line.trim();
           if (!trimmed) continue;
 
-          if (trimmed.startsWith("CITATIONS:")) {
+          // Data stream protocol: "2:" carries out-of-band JSON parts (trace,
+          // citations); "0:" carries a plain-text token. The server never sends
+          // "CITATIONS:"/"TRACE:" prefixes — those belonged to an older protocol.
+          if (trimmed.startsWith("2:")) {
             try {
-              const jsonStr = trimmed.substring("CITATIONS:".length);
-              parsedCitations = JSON.parse(jsonStr);
+              const parts = JSON.parse(trimmed.substring(2));
+              for (const part of parts) {
+                if (part.type === "trace") parsedTrace = part.data;
+                else if (part.type === "citations") parsedCitations = part.data;
+              }
             } catch (e) {
-              console.error("Failed parsing citations SSE:", e);
-            }
-          } else if (trimmed.startsWith("TRACE:")) {
-            try {
-              const jsonStr = trimmed.substring("TRACE:".length);
-              parsedTrace = JSON.parse(jsonStr);
-            } catch (e) {
-              console.error("Failed parsing trace SSE:", e);
+              console.error("Failed parsing data stream part:", e);
             }
           } else if (trimmed.startsWith("0:")) {
             try {
@@ -187,23 +186,21 @@ export default function ChatPanel({
             } catch (e) {
               accumulatedContent += trimmed.substring(2);
             }
-          } else {
-            accumulatedContent += trimmed;
           }
-
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === assistantMsgId
-                ? {
-                    ...msg,
-                    content: accumulatedContent,
-                    citations: parsedCitations,
-                    trace: parsedTrace,
-                  }
-                : msg
-            )
-          );
         }
+
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === assistantMsgId
+              ? {
+                  ...msg,
+                  content: accumulatedContent,
+                  citations: parsedCitations,
+                  trace: parsedTrace,
+                }
+              : msg
+          )
+        );
       }
     } catch (err: any) {
       setMessages((prev) =>
@@ -253,16 +250,24 @@ export default function ChatPanel({
     document.body.removeChild(a);
   }
 
-  function handleCitationClick(citation: CitationPayload) {
+  const handleCitationClick = useCallback((citation: CitationPayload) => {
+    // PDF/YouTube need the actual document (blobUrl) or video (url) fetched to
+    // open at the right page/timestamp — passing the excerpt as rawText would
+    // make SourceViewerModal think it already has everything and skip that
+    // fetch, so leave rawText unset for those and let the on-demand fetch fill
+    // in blobUrl/url/rawText from the full row instead.
+    const isDocumentType = citation.type === "PDF" || citation.type === "YOUTUBE";
     setSelectedViewerSource({
       id: citation.sourceId,
       title: citation.title,
-      type: "TEXT",
+      type: citation.type,
       url: null,
-      rawText: citation.text,
+      blobUrl: null,
+      rawText: isDocumentType ? null : citation.text,
+      locator: citation.locator ?? null,
       createdAt: new Date().toISOString(),
     });
-  }
+  }, []);
 
   return (
     <div className="flex flex-col h-full bg-white text-[#141A22] relative overflow-hidden">
@@ -389,82 +394,14 @@ export default function ChatPanel({
             </div>
           </div>
         ) : (
-          messages.map((m) => {
-            const isUser = m.role === "user";
-
-            return (
-              <div
-                key={m.id}
-                className={`flex max-w-3xl gap-2.5 md:gap-3 ${
-                  isUser ? "ml-auto flex-row-reverse" : ""
-                }`}
-              >
-                {/* Avatar */}
-                <div
-                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-semibold ${
-                    isUser
-                      ? "bg-[#141A22] text-white shadow-xs"
-                      : "bg-[#3B4CC0] text-white shadow-xs"
-                  }`}
-                >
-                  {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
-                </div>
-
-                <div className={`min-w-0 max-w-[85%] space-y-3 ${isUser ? "items-end" : ""}`}>
-                  {!isUser && m.trace && (
-                    <RetrievalTrace trace={m.trace} isStreaming={isLoading && !m.content} />
-                  )}
-
-                  {m.content && (
-                    <div
-                      className={`overflow-hidden break-words rounded-2xl p-3.5 text-xs leading-relaxed md:p-4 shadow-2xs ${
-                        isUser
-                          ? "rounded-tr-none bg-[#141A22] text-white font-medium"
-                          : "rounded-tl-none border border-[#E2E7EA] bg-[#F5F7F8] text-[#141A22]"
-                      }`}
-                    >
-                      {isUser ? (
-                        <div className="whitespace-pre-wrap">{m.content}</div>
-                      ) : (
-                        renderProseWithInlineCitations(m.content, m.citations, (c) => handleCitationClick(c))
-                      )}
-                    </div>
-                  )}
-
-                  {/* Citation Chips under Assistant Answer */}
-                  {!isUser && m.citations && m.citations.length > 0 && (
-                    <div className="pt-1 space-y-1.5">
-                      <div className="flex items-center gap-1 text-[11px] font-semibold text-neutral-500">
-                        <BookOpen className="w-3 h-3 text-[#1D9E75]" />
-                        <span>Citations ({m.citations.length})</span>
-                      </div>
-
-                      <div className="flex flex-wrap gap-1.5">
-                        {m.citations.map((c) => (
-                          <button
-                            key={c.number}
-                            type="button"
-                            onClick={() => handleCitationClick(c)}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium bg-white hover:bg-neutral-50 border border-[#E2E7EA] rounded-xl shadow-2xs text-[#141A22] hover:border-[#3B4CC0] transition cursor-pointer"
-                          >
-                            <span className="font-semibold text-[#1D9E75] bg-[#1D9E75]/10 px-1 rounded border border-[#1D9E75]/20">
-                              [{c.number}]
-                            </span>
-                            <span className="max-w-[130px] truncate">{c.title}</span>
-                            {c.humanLocator && (
-                              <span className="text-[10px] font-mono text-neutral-400">
-                                · {c.humanLocator}
-                              </span>
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })
+          messages.map((m) => (
+            <ChatMessageBubble
+              key={m.id}
+              message={m}
+              isLoading={isLoading}
+              onCitationClick={handleCitationClick}
+            />
+          ))
         )}
 
         {isLoading && (
@@ -523,16 +460,107 @@ export default function ChatPanel({
             title: selectedViewerSource.title,
             type: selectedViewerSource.type,
             url: selectedViewerSource.url,
+            blobUrl: selectedViewerSource.blobUrl,
             rawText: selectedViewerSource.rawText,
             createdAt: selectedViewerSource.createdAt,
           }}
           notebookId={notebookId}
+          locator={selectedViewerSource.locator}
           onClose={() => setSelectedViewerSource(null)}
         />
       )}
     </div>
   );
 }
+
+/**
+ * Memoized so a streaming answer only re-renders its own bubble — without this,
+ * every setMessages call during streaming re-ran the citation-regex parser
+ * (renderProseWithInlineCitations) over every past message in the thread too.
+ */
+const ChatMessageBubble = memo(function ChatMessageBubble({
+  message: m,
+  isLoading,
+  onCitationClick,
+}: {
+  message: MessageItem;
+  isLoading: boolean;
+  onCitationClick: (c: CitationPayload) => void;
+}) {
+  const isUser = m.role === "user";
+
+  return (
+    <div
+      className={`flex max-w-3xl gap-2.5 md:gap-3 ${
+        isUser ? "ml-auto flex-row-reverse" : ""
+      }`}
+    >
+      {/* Avatar */}
+      <div
+        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-semibold ${
+          isUser
+            ? "bg-[#141A22] text-white shadow-xs"
+            : "bg-[#3B4CC0] text-white shadow-xs"
+        }`}
+      >
+        {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+      </div>
+
+      <div className={`min-w-0 max-w-[85%] space-y-3 ${isUser ? "items-end" : ""}`}>
+        {!isUser && m.trace && (
+          <RetrievalTrace trace={m.trace} isStreaming={isLoading && !m.content} />
+        )}
+
+        {m.content && (
+          <div
+            className={`overflow-hidden break-words rounded-2xl p-3.5 text-xs leading-relaxed md:p-4 shadow-2xs ${
+              isUser
+                ? "rounded-tr-none bg-[#141A22] text-white font-medium"
+                : "rounded-tl-none border border-[#E2E7EA] bg-[#F5F7F8] text-[#141A22]"
+            }`}
+          >
+            {isUser ? (
+              <div className="whitespace-pre-wrap">{m.content}</div>
+            ) : (
+              renderProseWithInlineCitations(m.content, m.citations, onCitationClick)
+            )}
+          </div>
+        )}
+
+        {/* Citation Chips under Assistant Answer */}
+        {!isUser && m.citations && m.citations.length > 0 && (
+          <div className="pt-1 space-y-1.5">
+            <div className="flex items-center gap-1 text-[11px] font-semibold text-neutral-500">
+              <BookOpen className="w-3 h-3 text-[#1D9E75]" />
+              <span>Citations ({m.citations.length})</span>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5">
+              {m.citations.map((c) => (
+                <button
+                  key={c.number}
+                  type="button"
+                  onClick={() => onCitationClick(c)}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium bg-white hover:bg-neutral-50 border border-[#E2E7EA] rounded-xl shadow-2xs text-[#141A22] hover:border-[#3B4CC0] transition cursor-pointer"
+                >
+                  <span className="font-semibold text-[#1D9E75] bg-[#1D9E75]/10 px-1 rounded border border-[#1D9E75]/20">
+                    [{c.number}]
+                  </span>
+                  <span className="max-w-[130px] truncate">{c.title}</span>
+                  {c.humanLocator && (
+                    <span className="text-[10px] font-mono text-neutral-400">
+                      · {c.humanLocator}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+});
 
 function renderProseWithInlineCitations(
   content: string,

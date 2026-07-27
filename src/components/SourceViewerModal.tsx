@@ -68,6 +68,35 @@ export default function SourceViewerModal({
   const [variantLoading, setVariantLoading] = useState(false);
   const [variantError, setVariantError] = useState<string | null>(null);
 
+  // The source list/command palette only carry lightweight fields (no blobUrl/
+  // rawText, to keep polling cheap), so fetch the full row here when neither was
+  // provided. The citation-click path always supplies rawText (the cited excerpt)
+  // and intentionally skips this fetch to keep showing just that excerpt.
+  const [fetchedSource, setFetchedSource] = useState<{
+    url?: string | null;
+    blobUrl?: string | null;
+    rawText?: string | null;
+  } | null>(null);
+
+  useEffect(() => {
+    if (source.rawText != null || source.blobUrl != null) return;
+    let isMounted = true;
+
+    fetch(`/api/sources/${source.id}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (isMounted && data) setFetchedSource(data);
+      })
+      .catch((err) => console.error("Failed to load full source content:", err));
+
+    return () => {
+      isMounted = false;
+    };
+  }, [source.id, source.rawText, source.blobUrl]);
+
+  const effectiveUrl = fetchedSource?.url ?? source.url;
+  const effectiveBlobUrl = fetchedSource?.blobUrl ?? source.blobUrl;
+
   useEffect(() => {
     let isMounted = true;
     async function loadVariantAvailability() {
@@ -144,7 +173,7 @@ export default function SourceViewerModal({
     });
   }, [availableVariants]);
 
-  const rawText = source.rawText || "";
+  const rawText = (fetchedSource?.rawText ?? source.rawText) || "";
   const activeVariantText = availableVariants[variant]?.text || null;
   const displayText = variant === "ORIGINAL" ? rawText : activeVariantText || rawText;
 
@@ -155,6 +184,14 @@ export default function SourceViewerModal({
 
   const activeSpan: SegmentSpan | null = useMemo(() => {
     if (!effectiveLocator) return null;
+
+    // The ORIGINAL variant's char offsets are already on the locator itself —
+    // no need for a segment-spans fetch (which never happens for ORIGINAL; that
+    // request is only ever made for the ENGLISH/ROMANIZED variants below).
+    if (variant === "ORIGINAL") {
+      return [effectiveLocator.charStart, effectiveLocator.charEnd];
+    }
+
     const start = effectiveLocator.segStart;
     const end = effectiveLocator.segEnd;
     if (start === undefined || end === undefined) return null;
@@ -206,14 +243,14 @@ export default function SourceViewerModal({
               <h3 className="max-w-full truncate text-sm font-semibold text-[#141A22] sm:max-w-md">
                 {source.title}
               </h3>
-              {source.url && (
+              {effectiveUrl && (
                 <a
-                  href={source.url}
+                  href={effectiveUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-[11px] text-neutral-500 hover:text-[#3B4CC0] flex items-center gap-1 mt-0.5 truncate max-w-sm"
                 >
-                  <span className="truncate">{source.url}</span>
+                  <span className="truncate">{effectiveUrl}</span>
                   <ExternalLink className="w-3 h-3 shrink-0" />
                 </a>
               )}
@@ -338,14 +375,14 @@ export default function SourceViewerModal({
               </div>
 
               <div className="flex-1 bg-[#F5F7F8] relative flex items-center justify-center p-4">
-                {source.blobUrl || source.url ? (
+                {effectiveBlobUrl || effectiveUrl ? (
                   <object
-                    data={`${source.blobUrl || source.url}#page=${currentPage}`}
+                    data={`${effectiveBlobUrl || effectiveUrl}#page=${currentPage}`}
                     type="application/pdf"
                     className="w-full h-full rounded-xl border border-[#E2E7EA] shadow-inner bg-white"
                   >
                     <iframe
-                      src={`${source.blobUrl || source.url}#page=${currentPage}`}
+                      src={`${effectiveBlobUrl || effectiveUrl}#page=${currentPage}`}
                       className="w-full h-full rounded-xl border border-[#E2E7EA]"
                     />
                   </object>
@@ -363,9 +400,9 @@ export default function SourceViewerModal({
           {source.type === "YOUTUBE" && activeViewTab === "viewer" && (
             <div className="flex-1 grid grid-cols-1 md:grid-cols-3 overflow-hidden">
               <div className="md:col-span-2 bg-black flex items-center justify-center relative">
-                {source.url ? (
+                {effectiveUrl ? (
                   <iframe
-                    src={getYouTubeEmbedUrl(source.url, locator?.startSec)}
+                    src={getYouTubeEmbedUrl(effectiveUrl, locator?.startSec)}
                     className="w-full h-full min-h-[300px]"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen

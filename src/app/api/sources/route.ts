@@ -20,8 +20,22 @@ export async function GET(req: NextRequest) {
   const { error } = await loadOwnedNotebook(notebookId, userId);
   if (error) return error;
 
+  // Lightweight fields only: this is polled every few seconds while sources are
+  // processing, and blobUrl/rawText can be several MB (base64 PDFs) — the list
+  // view never renders them. SourceViewerModal fetches the full row on demand.
   const sources = await db.source.findMany({
     where: { notebookId },
+    select: {
+      id: true,
+      notebookId: true,
+      type: true,
+      title: true,
+      url: true,
+      status: true,
+      error: true,
+      chunkCount: true,
+      createdAt: true,
+    },
     orderBy: { createdAt: "desc" },
   });
 
