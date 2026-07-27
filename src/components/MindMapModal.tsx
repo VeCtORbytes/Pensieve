@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import {
   X,
   Sparkles,
@@ -18,18 +18,54 @@ import {
 } from "lucide-react";
 import mermaid from "mermaid";
 
-interface MindMapNode {
+interface MindMapNodeItem {
   id: string;
   label: string;
   category: string;
-  description?: string;
-  children?: MindMapNode[];
+  description: string;
+  parentId: string;
 }
 
 interface MindMapData {
   title: string;
   mermaidCode: string;
-  root: MindMapNode;
+  nodes: MindMapNodeItem[];
+}
+
+interface TreeMindMapNode {
+  id: string;
+  label: string;
+  category: string;
+  description: string;
+  children: TreeMindMapNode[];
+}
+
+function buildTreeFromNodes(nodes: MindMapNodeItem[]): TreeMindMapNode | null {
+  if (!nodes || nodes.length === 0) return null;
+  const nodeMap = new Map<string, TreeMindMapNode>();
+  nodes.forEach((n) =>
+    nodeMap.set(n.id, {
+      id: n.id,
+      label: n.label,
+      category: n.category,
+      description: n.description,
+      children: [],
+    })
+  );
+
+  let rootNode: TreeMindMapNode | null = null;
+
+  nodes.forEach((n) => {
+    const current = nodeMap.get(n.id)!;
+    if (!n.parentId || n.parentId === "none" || n.parentId === "root" || !nodeMap.has(n.parentId)) {
+      if (!rootNode) rootNode = current;
+    } else {
+      const parent = nodeMap.get(n.parentId);
+      if (parent) parent.children.push(current);
+    }
+  });
+
+  return rootNode || nodeMap.get(nodes[0].id) || null;
 }
 
 export default function MindMapModal({
@@ -44,7 +80,7 @@ export default function MindMapModal({
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"visual" | "mermaid">("visual");
   const [copied, setCopied] = useState(false);
-  const [selectedNode, setSelectedNode] = useState<MindMapNode | null>(null);
+  const [selectedNode, setSelectedNode] = useState<TreeMindMapNode | null>(null);
   const mermaidRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -55,6 +91,11 @@ export default function MindMapModal({
       fontFamily: "Inter, sans-serif",
     });
   }, []);
+
+  const rootTree = useMemo(() => {
+    if (!data?.nodes) return null;
+    return buildTreeFromNodes(data.nodes);
+  }, [data]);
 
   async function generateMindMap() {
     try {
@@ -73,7 +114,8 @@ export default function MindMapModal({
 
       const result: MindMapData = await res.json();
       setData(result);
-      if (result.root) setSelectedNode(result.root);
+      const constructed = buildTreeFromNodes(result.nodes || []);
+      if (constructed) setSelectedNode(constructed);
     } catch (err: any) {
       setError(err.message || "Failed to load mind map");
     } finally {
@@ -242,7 +284,7 @@ export default function MindMapModal({
                 Try Again
               </button>
             </div>
-          ) : activeTab === "visual" && data ? (
+          ) : activeTab === "visual" && rootTree ? (
             <div className="flex-1 grid grid-cols-1 md:grid-cols-3 overflow-hidden">
               {/* Interactive Tree View */}
               <div className="md:col-span-2 p-4 overflow-y-auto space-y-3 border-r border-[#E2E7EA]">
@@ -251,7 +293,7 @@ export default function MindMapModal({
                 </div>
 
                 <TreeNodeItem
-                  node={data.root}
+                  node={rootTree}
                   depth={0}
                   selectedNodeId={selectedNode?.id}
                   onSelectNode={(node) => setSelectedNode(node)}
@@ -322,10 +364,10 @@ function TreeNodeItem({
   selectedNodeId,
   onSelectNode,
 }: {
-  node: MindMapNode;
+  node: TreeMindMapNode;
   depth: number;
   selectedNodeId?: string;
-  onSelectNode: (node: MindMapNode) => void;
+  onSelectNode: (node: TreeMindMapNode) => void;
 }) {
   const [isOpen, setIsOpen] = useState(true);
   const isSelected = selectedNodeId === node.id;

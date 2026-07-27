@@ -7,20 +7,20 @@ import { z } from "zod";
 
 export const maxDuration = 60;
 
-const MindMapNodeSchema: z.ZodType<any> = z.lazy(() =>
-  z.object({
-    id: z.string(),
-    label: z.string(),
-    category: z.string(),
-    description: z.string().optional(),
-    children: z.array(MindMapNodeSchema).optional(),
-  })
-);
+// OpenAI Strict Structured Outputs requires every property to be explicitly required.
+// We use a flat node list schema with parentId to satisfy OpenAI Strict Schema requirements.
+const MindMapNodeItemSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  category: z.string(),
+  description: z.string(),
+  parentId: z.string(), // "none" for the top central root node
+});
 
 const MindMapOutputSchema = z.object({
   title: z.string(),
   mermaidCode: z.string(),
-  root: MindMapNodeSchema,
+  nodes: z.array(MindMapNodeItemSchema),
 });
 
 export async function POST(req: NextRequest) {
@@ -62,7 +62,7 @@ ${combinedText}
 Generate:
 1. A main title for the Mind Map.
 2. A valid, clean Mermaid.js flowchart code string (starting with 'graph TD') connecting main concepts, subtopics, and key technical terms.
-3. A hierarchical tree of nodes starting from a central Root Node, branching into 3-5 Main Categories, each having 2-4 Sub-concepts with short descriptions.`;
+3. A flat list of nodes representing the central topic, main categories, and sub-concepts. Assign parentId="none" to the single top root node, and link child nodes to their respective parent's id. Ensure description is populated for every node.`;
 
     const result = await generateObject({
       model: openai("gpt-4o-mini"),
