@@ -1,21 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { Volume2, Layers, Loader2 } from "lucide-react";
+import { Volume2, Layers, Loader2, GitFork } from "lucide-react";
 import AudioPlayer from "@/components/AudioPlayer";
 import StudyToolsModal from "@/components/StudyToolsModal";
+import MindMapModal from "@/components/MindMapModal";
 
 /**
- * Persistent home for generated notebook outputs. Only two entries exist
- * today (Audio Overview, Study Tools) — both moved here from being separate
- * transient overlays (a floating player card, a full-screen modal) triggered
- * from the notebook header. Neither entry auto-generates on mount; each only
- * fetches once the user clicks Generate, same as before.
+ * Persistent home for generated notebook outputs (Audio Overview, Study Tools,
+ * AI Mind Map & Knowledge Graph).
  */
 export default function StudioPanel({ notebookId }: { notebookId: string }) {
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [audioData, setAudioData] = useState<{ audioUrl: string; scriptText: string } | null>(null);
   const [studyToolsOpen, setStudyToolsOpen] = useState(false);
+  const [mindMapOpen, setMindMapOpen] = useState(false);
 
   async function handleGenerateAudioOverview() {
     try {
@@ -66,7 +65,7 @@ export default function StudioPanel({ notebookId }: { notebookId: string }) {
                 <Volume2 className="h-4 w-4 shrink-0 text-secondary" />
                 <div className="min-w-0">
                   <p className="truncate text-xs font-semibold text-ink">Audio Overview</p>
-                  <p className="text-[11px] text-neutral-400">Not generated yet</p>
+                  <p className="text-[11px] text-neutral-400">Podcast synthesis</p>
                 </div>
               </div>
               <button
@@ -103,7 +102,7 @@ export default function StudioPanel({ notebookId }: { notebookId: string }) {
                 <Layers className="h-4 w-4 shrink-0 text-accent" />
                 <div className="min-w-0">
                   <p className="truncate text-xs font-semibold text-ink">Study Tools</p>
-                  <p className="text-[11px] text-neutral-400">Not generated yet</p>
+                  <p className="text-[11px] text-neutral-400">Flashcards & Quizzes</p>
                 </div>
               </div>
               <button
@@ -116,7 +115,35 @@ export default function StudioPanel({ notebookId }: { notebookId: string }) {
             </div>
           )}
         </div>
+
+        {/* AI Mind Map & Knowledge Graph entry */}
+        <div className="rounded-xl bg-surface border border-rule shadow-xs overflow-hidden">
+          <div className="p-4 flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <GitFork className="h-4 w-4 shrink-0 text-accent animate-pulse" />
+              <div className="min-w-0">
+                <p className="truncate text-xs font-semibold text-ink">Mind Map & Graph</p>
+                <p className="text-[11px] text-neutral-400">Mermaid.js diagram</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setMindMapOpen(true)}
+              className="shrink-0 rounded-lg bg-ink px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-accent cursor-pointer"
+            >
+              Generate
+            </button>
+          </div>
+        </div>
       </div>
+
+      {/* Mind Map Modal Launcher */}
+      {mindMapOpen && (
+        <MindMapModal
+          notebookId={notebookId}
+          onClose={() => setMindMapOpen(false)}
+        />
+      )}
     </div>
   );
 }

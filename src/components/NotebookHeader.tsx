@@ -2,13 +2,12 @@
 
 import { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
-import { ArrowLeft, Trash2, Search, Waypoints, Sparkles, GitFork } from "lucide-react";
+import { ArrowLeft, Trash2, Search, Waypoints, Sparkles } from "lucide-react";
 import { renameNotebook, deleteNotebook } from "@/app/actions/notebooks";
 import CommandPalette from "@/components/CommandPalette";
 import SourceViewerModal from "@/components/SourceViewerModal";
 import AuthControls from "@/components/AuthControls";
 import IngestionPipelineVisualizer from "@/components/IngestionPipelineVisualizer";
-import MindMapModal from "@/components/MindMapModal";
 
 export default function NotebookHeader({
   id,
@@ -26,9 +25,6 @@ export default function NotebookHeader({
 
   // Pipeline Visualizer state
   const [isVisualizerOpen, setIsVisualizerOpen] = useState(false);
-
-  // Mind Map Modal state
-  const [isMindMapOpen, setIsMindMapOpen] = useState(false);
 
   // Capture-phase so this fires even when focus is inside an input/textarea.
   useEffect(() => {
@@ -109,17 +105,6 @@ export default function NotebookHeader({
           )}
         </div>
 
-        {/* Mind Map Modal Trigger */}
-        <button
-          type="button"
-          onClick={() => setIsMindMapOpen(true)}
-          aria-label="Open AI Knowledge Graph & Mind Map"
-          className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border border-rule bg-white hover:bg-vessel px-3 py-1.5 text-xs font-semibold text-ink shadow-xs transition hover:border-accent"
-        >
-          <GitFork className="h-3.5 w-3.5 text-accent" />
-          <span className="hidden md:inline">Mind Map</span>
-        </button>
-
         {/* Pipeline Visualizer Trigger */}
         <button
           type="button"
@@ -156,11 +141,6 @@ export default function NotebookHeader({
         {/* Auth Controls */}
         <AuthControls />
       </header>
-
-      {/* Mind Map Modal */}
-      {isMindMapOpen && (
-        <MindMapModal notebookId={id} onClose={() => setIsMindMapOpen(false)} />
-      )}
 
       {/* Pipeline Visualizer Modal */}
       {isVisualizerOpen && (
