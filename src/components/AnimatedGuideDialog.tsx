@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Sparkles, HelpCircle, X, ChevronRight, ChevronLeft, Lightbulb, BookOpen, Layers, MessageSquare } from "lucide-react";
+import { Sparkles, X, ChevronRight, ChevronLeft, BookOpen, MessageSquare, Layers } from "lucide-react";
 
 interface GuideStep {
   id: number;
@@ -9,7 +9,6 @@ interface GuideStep {
   title: string;
   dialogue: string;
   icon: any;
-  actionText?: string;
 }
 
 const guideSteps: GuideStep[] = [
@@ -60,7 +59,7 @@ export default function AnimatedGuideDialog() {
         setIsTyping(false);
         clearInterval(timer);
       }
-    }, 20);
+    }, 18);
 
     return () => clearInterval(timer);
   }, [currentStepIndex, isOpen]);
@@ -71,10 +70,10 @@ export default function AnimatedGuideDialog() {
         type="button"
         onClick={() => setIsOpen(true)}
         title="Open AI Guide Dialogue"
-        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-3.5 py-2 rounded-full bg-[#141A22] text-white shadow-xl hover:bg-[#3B4CC0] transition cursor-pointer border border-[#3B4CC0]/40 group animate-in fade-in duration-200"
+        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-4 py-2.5 rounded-full bg-white text-[#141A22] shadow-lg hover:bg-[#F5F7F8] transition cursor-pointer border border-[#E2E7EA] group animate-in fade-in duration-200"
       >
-        <Sparkles className="w-4 h-4 text-amber-400 animate-spin" />
-        <span className="text-xs font-semibold">Pensieve Guide</span>
+        <Sparkles className="w-4 h-4 text-[#3B4CC0] animate-spin" />
+        <span className="text-xs font-semibold">Notebook Guide</span>
       </button>
     );
   }
@@ -83,55 +82,47 @@ export default function AnimatedGuideDialog() {
 
   return (
     <div className="relative mx-4 mt-3 mb-1 animate-in fade-in slide-in-from-top-3 duration-300">
-      <div className="relative overflow-hidden rounded-2xl border border-[#3B4CC0]/30 bg-gradient-to-r from-[#141A22] via-[#1E2638] to-[#141A22] text-white p-4 shadow-xl">
-        {/* Swirling Background Sparkle Effects */}
-        <div className="absolute -top-12 -right-12 w-40 h-40 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
-        <div className="absolute -bottom-12 -left-12 w-40 h-40 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
-
+      <div className="relative overflow-hidden rounded-2xl border border-[#E2E7EA] bg-white text-[#141A22] p-4 shadow-sm">
         <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          {/* Animated Avatar & Dialogue Speech Box */}
+          {/* Avatar & Light Dialogue Box */}
           <div className="flex items-start gap-3.5 flex-1 min-w-0">
-            {/* Animated Avatar Icon */}
-            <div className="relative shrink-0 mt-0.5">
-              <div className="p-2.5 rounded-2xl bg-amber-400/10 border border-amber-400/30 text-amber-300 shadow-inner">
-                <IconComponent className="w-5 h-5 animate-pulse text-amber-300" />
-              </div>
-              <span className="absolute -inset-1 rounded-2xl bg-amber-400/20 animate-ping pointer-events-none" />
+            <div className="p-2.5 rounded-2xl bg-[#3B4CC0]/10 border border-[#3B4CC0]/20 text-[#3B4CC0] shrink-0 mt-0.5">
+              <IconComponent className="w-5 h-5 text-[#3B4CC0]" />
             </div>
 
             {/* Speech Dialogue Box */}
             <div className="space-y-1 min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-mono font-semibold uppercase tracking-wider bg-amber-400/20 text-amber-300 px-2 py-0.5 rounded border border-amber-400/30">
+                <span className="text-[10px] font-mono font-semibold uppercase tracking-wider bg-[#3B4CC0]/10 text-[#3B4CC0] px-2 py-0.5 rounded border border-[#3B4CC0]/20">
                   {step.badge}
                 </span>
-                <h4 className="text-xs font-semibold text-slate-100 truncate">
+                <h4 className="text-xs font-semibold text-[#141A22] truncate">
                   {step.title}
                 </h4>
               </div>
 
               {/* Animated Typewriter Text */}
-              <p className="text-xs text-slate-200 leading-relaxed font-sans min-h-[36px]">
+              <p className="text-xs text-neutral-600 leading-relaxed font-sans min-h-[36px]">
                 {typedText}
-                {isTyping && <span className="inline-block w-1.5 h-3.5 ml-1 bg-amber-400 animate-pulse align-middle" />}
+                {isTyping && <span className="inline-block w-1.5 h-3.5 ml-1 bg-[#3B4CC0] animate-pulse align-middle" />}
               </p>
             </div>
           </div>
 
           {/* Stepper Navigation & Dismiss Controls */}
-          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center border-t sm:border-t-0 border-[#3B4CC0]/20 pt-2 sm:pt-0 w-full sm:w-auto justify-between sm:justify-end">
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center border-t sm:border-t-0 border-[#E2E7EA] pt-2 sm:pt-0 w-full sm:w-auto justify-between sm:justify-end">
             <div className="flex items-center gap-1">
               <button
                 type="button"
                 disabled={currentStepIndex === 0}
                 onClick={() => setCurrentStepIndex((prev) => Math.max(0, prev - 1))}
-                className="p-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 disabled:opacity-30 text-slate-300 transition cursor-pointer"
+                className="p-1.5 rounded-xl bg-[#F5F7F8] hover:bg-[#E2E7EA] disabled:opacity-30 text-[#141A22] transition cursor-pointer border border-[#E2E7EA]"
                 title="Previous Tip"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
 
-              <span className="text-[10px] font-mono text-slate-400 px-2">
+              <span className="text-[10px] font-mono text-neutral-500 px-2 font-medium">
                 {currentStepIndex + 1} / {guideSteps.length}
               </span>
 
@@ -139,7 +130,7 @@ export default function AnimatedGuideDialog() {
                 type="button"
                 disabled={currentStepIndex === guideSteps.length - 1}
                 onClick={() => setCurrentStepIndex((prev) => Math.min(guideSteps.length - 1, prev + 1))}
-                className="p-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 disabled:opacity-30 text-slate-300 transition cursor-pointer"
+                className="p-1.5 rounded-xl bg-[#F5F7F8] hover:bg-[#E2E7EA] disabled:opacity-30 text-[#141A22] transition cursor-pointer border border-[#E2E7EA]"
                 title="Next Tip"
               >
                 <ChevronRight className="w-4 h-4" />
@@ -149,7 +140,7 @@ export default function AnimatedGuideDialog() {
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/80 transition cursor-pointer"
+              className="p-1.5 rounded-xl text-neutral-400 hover:text-[#141A22] hover:bg-[#F5F7F8] transition cursor-pointer border border-transparent hover:border-[#E2E7EA]"
               title="Dismiss Guide"
             >
               <X className="w-4 h-4" />
