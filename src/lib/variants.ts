@@ -186,11 +186,7 @@ export async function getVariantText(
 
 /**
  * Returns the passage covering a segment range, rendered in the requested
- * variant. This is what lets a chunk retrieved from the English index be shown
- * and quoted in Hindi (or vice versa) without re-embedding anything.
- *
- * Returns null when the variant is unavailable, so callers can fall back to the
- * chunk's own stored text.
+ * variant.
  */
 export async function materializeVariantText(
   sourceId: string,
@@ -252,8 +248,8 @@ export function sliceVariant(
 
 /**
  * Generates a variant on demand and caches it. ORIGINAL always exists already;
- * ENGLISH and ROMANIZED are derived from it segment by segment, which is what
- * keeps ordinals aligned.
+ * ENGLISH and ROMANIZED are derived from it segment by segment. Self-heals missing
+ * ORIGINAL variants from source.rawText.
  */
 export async function ensureVariant(
   sourceId: string,
@@ -262,19 +258,25 @@ export async function ensureVariant(
   const existing = await getVariantText(sourceId, kind);
   if (existing) return existing;
 
-  if (kind === "ORIGINAL") {
-    throw new Error("The original text is missing; re-index this source.");
-  }
-
   const source = await db.source.findUnique({
     where: { id: sourceId },
-    select: { language: true, segmentMeta: true },
+    select: { language: true, rawText: true, segmentMeta: true },
   });
   if (!source) throw new Error("Source not found");
 
-  const original = await getVariantText(sourceId, "ORIGINAL");
+  let original = await getVariantText(sourceId, "ORIGINAL");
   if (!original) {
-    throw new Error("The original text is missing; re-index this source.");
+    if (source.rawText) {
+      const parts = source.rawText.split("\n\n").filter((p) => p.trim());
+      original = await saveVariant(
+        sourceId,
+        "ORIGINAL",
+        source.language,
+        parts.length > 0 ? parts : [source.rawText]
+      );
+    } else {
+      throw new Error("The original text is missing; re-index this source.");
+    }
   }
 
   // An English source needs no English translation — mirror the original.
@@ -373,7 +375,6 @@ export function variantLabel(kind: VariantKind, sourceLanguage?: string | null):
   if (kind === "ENGLISH") return "English";
 
   if (kind === "ROMANIZED") {
-    // Hindi in Latin script has a widely used name; other languages do not.
     return sourceLanguage === "hi"
       ? "Hinglish"
       : `${shortLanguageName(sourceLanguage)} (Latin)`;
