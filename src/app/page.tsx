@@ -156,8 +156,3 @@ export default async function HomePage() {
     </main>
   );
 }
-      {/* Cartoon Speech Bubble Tour for Homepage */}
-      <CartoonGuideTour page="home" />
-    </main>
-  );
-}
