@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
+import { db } from "@/lib/db";
 import { loadOwnedSource } from "@/lib/authz";
 
 /** Full source row (including blobUrl/rawText), fetched on demand by the viewer. */
@@ -11,8 +12,11 @@ export async function GET(
     const { id } = await params;
 
     const { userId } = await auth();
-    const { data: source, error } = await loadOwnedSource(id, userId);
+    const { error } = await loadOwnedSource(id, userId);
     if (error) return error;
+
+    // Heavy columns are excluded from the ownership check, so read them here.
+    const source = await db.source.findUnique({ where: { id } });
 
     return NextResponse.json(source);
   } catch (error: any) {

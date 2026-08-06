@@ -18,7 +18,7 @@ export async function POST(
     }
 
     const { userId } = await auth();
-    const { data: source, error } = await loadOwnedSource(id, userId);
+    const { error } = await loadOwnedSource(id, userId);
     if (error) return error;
 
     // 1. Reset status to QUEUED
@@ -26,6 +26,12 @@ export async function POST(
       where: { id },
       data: { status: "QUEUED", error: null },
     });
+
+    // Re-indexing needs the document body, which the ownership check skips.
+    const source = await db.source.findUnique({ where: { id } });
+    if (!source) {
+      return NextResponse.json({ error: "Source not found" }, { status: 404 });
+    }
 
     const sourceContent = source.blobUrl || source.url || source.rawText || "";
 
@@ -40,7 +46,7 @@ export async function POST(
       console.error(`Re-index error for source ${source.id}:`, err);
     });
 
-    return NextResponse.json({ success: true, message: "Re-indexing started", source });
+    return NextResponse.json({ success: true, message: "Re-indexing started" });
   } catch (err: any) {
     console.error("Re-indexing API error:", err);
     return NextResponse.json({ error: err.message || "Failed to re-index source" }, { status: 500 });

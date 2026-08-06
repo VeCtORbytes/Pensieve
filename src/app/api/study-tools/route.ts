@@ -55,10 +55,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 1. Fetch Notebook and verify user ownership
+    // 1. Fetch Notebook and verify user ownership. Only title/rawText/url feed
+    // the prompt below, so blobUrl (base64 PDF) is left out of the read.
     const notebook = await db.notebook.findUnique({
       where: { id: notebookId },
-      include: { sources: true },
+      select: {
+        userId: true,
+        sources: { select: { title: true, rawText: true, url: true } },
+      },
     });
 
     if (!notebook) {

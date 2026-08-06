@@ -20,10 +20,21 @@ export async function loadOwnedNotebook(notebookId: string, userId: string | nul
   return { data: notebook } as const;
 }
 
+/**
+ * Ownership check only — deliberately does NOT select rawText/blobUrl, which
+ * are multi-MB on PDF sources. Routes that actually need the document body
+ * (the viewer detail endpoint, re-index) re-read it themselves once this passes.
+ */
 export async function loadOwnedSource(sourceId: string, userId: string | null) {
   const source = await db.source.findUnique({
     where: { id: sourceId },
-    include: { notebook: { select: { id: true, userId: true } } },
+    select: {
+      id: true,
+      notebookId: true,
+      type: true,
+      url: true,
+      notebook: { select: { id: true, userId: true } },
+    },
   });
 
   if (!source) {
